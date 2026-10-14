@@ -13,8 +13,11 @@ export type Database = {
       configuracoes_loja: {
         Row: {
           chave_pix: string
+          cor_primaria: string
+          cor_secundaria: string
           id: number
           instrucoes_pagamento: string
+          logo_caminho: string
           nome_exibicao: string
           texto_marca_dagua: string
           updated_at: string
@@ -22,8 +25,11 @@ export type Database = {
         }
         Insert: {
           chave_pix?: string
+          cor_primaria?: string
+          cor_secundaria?: string
           id?: number
           instrucoes_pagamento?: string
+          logo_caminho?: string
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string
@@ -31,8 +37,11 @@ export type Database = {
         }
         Update: {
           chave_pix?: string
+          cor_primaria?: string
+          cor_secundaria?: string
           id?: number
           instrucoes_pagamento?: string
+          logo_caminho?: string
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string

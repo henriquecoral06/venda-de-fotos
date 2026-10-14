@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/sheet";
 import { Campo } from "@/components/Campo";
 import { brl } from "@/lib/format";
+import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
+import { cn } from "@/lib/utils";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { useCriarPedido, type FotoPublica, type GaleriaPublica } from "./api";
 
@@ -153,7 +155,11 @@ export function Checkout({
           </div>
 
           <SheetFooter className="border-t border-border p-5">
-            <Button type="submit" className="w-full" disabled={criar.isPending || quantidade === 0}>
+            <Button
+              type="submit"
+              className={cn("w-full", CLASSE_BOTAO_MARCA)}
+              disabled={criar.isPending || quantidade === 0}
+            >
               {criar.isPending && <Loader2 className="size-4 animate-spin" />}
               {gratis ? "Receber as fotos" : `Fazer pedido · ${brl(total)}`}
             </Button>

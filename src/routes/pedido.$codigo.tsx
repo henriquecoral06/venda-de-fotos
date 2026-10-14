@@ -10,6 +10,7 @@ import { EstadoVazio } from "@/components/PageHeader";
 import { LayoutPublico } from "@/components/layout/LayoutPublico";
 import { linkDownload, usePedidoPublico, type PedidoPublico } from "@/features/vitrine/api";
 import { brl, dataHoraBR } from "@/lib/format";
+import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { BRAND } from "@/config/brand";
 
@@ -51,7 +52,7 @@ function PaginaPedido() {
 
   const p = pedido.data;
   return (
-    <LayoutPublico fotografo={p.fotografo}>
+    <LayoutPublico fotografo={p.fotografo} marca={p.marca}>
       <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
         <div className="space-y-1">
           <p className="text-sm text-muted-foreground">
@@ -223,7 +224,11 @@ function Downloads({ pedido }: { pedido: PedidoPublico }) {
           </div>
         </div>
         {itens.length > 1 && (
-          <Button onClick={() => void baixarTodas()} disabled={baixandoTodas}>
+          <Button
+            className={CLASSE_BOTAO_MARCA}
+            onClick={() => void baixarTodas()}
+            disabled={baixandoTodas}
+          >
             {baixandoTodas ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (

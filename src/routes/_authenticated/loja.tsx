@@ -10,6 +10,7 @@ import { Campo } from "@/components/Campo";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonFormulario } from "@/components/Skeletons";
 import { usePerfil } from "@/features/perfil/api";
+import { CartaoMarca } from "@/features/loja/CartaoMarca";
 import {
   textoMarcaDagua,
   useConfiguracoesLoja,
@@ -32,7 +33,7 @@ function PaginaLoja() {
     <div className="mx-auto max-w-3xl space-y-6 p-4 md:p-8">
       <PageHeader
         titulo="Loja e pagamento"
-        descricao="O que o cliente vê na galeria e no pedido: o seu nome, a marca d'água e como pagar."
+        descricao="O que o cliente vê na galeria e no pedido: a sua marca, o nome, a marca d'água e como pagar."
       />
       {config.isPending ? (
         <SkeletonFormulario campos={5} />
@@ -52,6 +53,7 @@ function PaginaLoja() {
           config={config.data}
           podeEditar={ctx?.ehDono ?? false}
           nomeOrganizacao={ctx?.organizacao?.nome}
+          organizacaoId={ctx?.organizacao?.id ?? null}
         />
       )}
     </div>
@@ -62,10 +64,12 @@ function FormularioLoja({
   config,
   podeEditar,
   nomeOrganizacao,
+  organizacaoId,
 }: {
   config: ConfiguracoesLoja;
   podeEditar: boolean;
   nomeOrganizacao: string | undefined;
+  organizacaoId: string | null;
 }) {
   const salvar = useSalvarLoja();
   const [dados, setDados] = useState<DadosLoja>({
@@ -74,6 +78,9 @@ function FormularioLoja({
     chave_pix: config.chave_pix,
     instrucoes_pagamento: config.instrucoes_pagamento,
     whatsapp: config.whatsapp,
+    logo_caminho: config.logo_caminho,
+    cor_primaria: config.cor_primaria,
+    cor_secundaria: config.cor_secundaria,
   });
   const campo = (chave: keyof DadosLoja) => ({
     value: dados[chave],
@@ -84,16 +91,27 @@ function FormularioLoja({
 
   function enviar(e: React.FormEvent) {
     e.preventDefault();
-    salvar.mutate(dados, {
-      onSuccess: () => toast.success("Dados da loja salvos."),
-      onError: (erro: Error) => toast.error(erro.message),
-    });
+    salvar.mutate(
+      { dados, logoAnterior: config.logo_caminho },
+      {
+        onSuccess: () => toast.success("Dados da loja salvos."),
+        onError: (erro: Error) => toast.error(erro.message),
+      },
+    );
   }
 
   const marcaAtual = textoMarcaDagua({ ...config, ...dados }, nomeOrganizacao);
 
   return (
     <form onSubmit={enviar} className="space-y-6">
+      <CartaoMarca
+        valores={dados}
+        logoSalva={config.logo_caminho}
+        organizacaoId={organizacaoId}
+        podeEditar={podeEditar}
+        aoMudar={(parcial) => setDados((d) => ({ ...d, ...parcial }))}
+      />
+
       <Card className="space-y-5 p-5">
         <h2 className="text-heading-sm">Identidade</h2>
         <Campo

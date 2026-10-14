@@ -434,6 +434,8 @@ begin
   if n <> 1 then raise exception 'RLS FALHOU: membro não lê as configurações da loja'; end if;
   update public.configuracoes_loja set chave_pix = 'membro' where id = 1;
   if found then raise exception 'RLS FALHOU: membro editou as configurações da loja'; end if;
+  update public.configuracoes_loja set cor_primaria = '#000000' where id = 1;
+  if found then raise exception 'RLS FALHOU: membro trocou a cor da marca'; end if;
 
   -- 25. pago, o visitante recebe o caminho do original e o Storage o libera
   perform set_config('role', 'none', true);
@@ -456,6 +458,23 @@ begin
   perform set_config('role', 'authenticated', true);
   update public.configuracoes_loja set chave_pix = 'pix@exemplo.test' where id = 1;
   if not found then raise exception 'RLS FALHOU: dono não editou as configurações da loja'; end if;
+
+  -- 27. marca: o dono define logo e cores; cor fora do formato é recusada; a
+  --     galeria pública devolve a marca
+  update public.configuracoes_loja
+     set cor_primaria = '#112233', cor_secundaria = '#aabbcc', logo_caminho = org_id || '/logo.png'
+   where id = 1;
+  if not found then raise exception 'RLS FALHOU: dono não definiu a marca'; end if;
+  begin
+    update public.configuracoes_loja set cor_primaria = 'vermelho' where id = 1;
+    raise exception 'RLS FALHOU: cor fora do formato aceita';
+  exception when check_violation then null;
+  end;
+  j := public.galeria_publica('rls-galeria-org', 'segredo');
+  if j -> 'marca' ->> 'cor_primaria' is distinct from '#112233'
+     or j -> 'marca' ->> 'logo' is distinct from org_id || '/logo.png' then
+    raise exception 'RLS FALHOU: galeria pública sem a marca: %', j -> 'marca';
+  end if;
   begin
     delete from public.galerias where id = gal_org;
     raise exception 'RLS FALHOU: galeria com pedido foi excluída';

@@ -18,6 +18,7 @@ import { Checkout, type ModoCompra } from "@/features/vitrine/Checkout";
 import { Lightbox } from "@/features/vitrine/Lightbox";
 import { brl, dataBR } from "@/lib/format";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
+import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/config/brand";
 
@@ -98,7 +99,7 @@ function PedidoSenha({
 }) {
   const [valor, setValor] = useState("");
   return (
-    <LayoutPublico fotografo={galeria.fotografo}>
+    <LayoutPublico fotografo={galeria.fotografo} marca={galeria.marca}>
       <div className="mx-auto flex max-w-md flex-col gap-6 p-4 py-12">
         {galeria.capa && (
           <img
@@ -137,7 +138,11 @@ function PedidoSenha({
                 Senha incorreta. Confira com o fotógrafo.
               </p>
             )}
-            <Button type="submit" className="w-full" disabled={conferindo}>
+            <Button
+              type="submit"
+              className={cn("w-full", CLASSE_BOTAO_MARCA)}
+              disabled={conferindo}
+            >
               {conferindo && <Loader2 className="size-4 animate-spin" />}
               Abrir galeria
             </Button>
@@ -179,14 +184,19 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   const qtd = fotosSelecionadas.length;
 
   const botaoSelecao = (
-    <Button size="sm" variant={qtd > 0 ? "default" : "outline"} onClick={() => setModo("selecao")}>
+    <Button
+      size="sm"
+      variant={qtd > 0 ? "default" : "outline"}
+      className={cn(qtd > 0 && CLASSE_BOTAO_MARCA)}
+      onClick={() => setModo("selecao")}
+    >
       <ShoppingBag className="size-4" />
       {qtd > 0 ? `${qtd} · ${precoFoto > 0 ? brl(precoFoto * qtd) : "grátis"}` : "Seleção"}
     </Button>
   );
 
   return (
-    <LayoutPublico fotografo={galeria.fotografo} acoes={botaoSelecao}>
+    <LayoutPublico fotografo={galeria.fotografo} marca={galeria.marca} acoes={botaoSelecao}>
       {/* Capa: escurecida embaixo para o título ler sobre a foto. */}
       <section className="relative h-[45vh] min-h-64 w-full overflow-hidden bg-muted">
         {galeria.capa && (
@@ -227,7 +237,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
             </p>
           </div>
           {precoPacote !== null && fotos.length > 0 && (
-            <Button onClick={() => setModo("pacote")}>
+            <Button className={CLASSE_BOTAO_MARCA} onClick={() => setModo("pacote")}>
               Todas as {fotos.length} fotos por {brl(precoPacote)}
             </Button>
           )}
@@ -294,7 +304,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
           <span className="text-sm text-foreground">
             {rotuloFotos(qtd)} · {precoFoto > 0 ? brl(precoFoto * qtd) : "grátis"}
           </span>
-          <Button size="sm" onClick={() => setModo("selecao")}>
+          <Button size="sm" className={CLASSE_BOTAO_MARCA} onClick={() => setModo("selecao")}>
             Continuar
           </Button>
         </div>
