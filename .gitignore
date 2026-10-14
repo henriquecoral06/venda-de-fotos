@@ -1,11 +1,43 @@
-node_modules/
-.next/
-out/
-dist/
-build/
-.env
-.env*.local
-.vercel
-.DS_Store
+# Logs
+logs
 *.log
-coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
+
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Variáveis locais (URL, chaves). O modelo versionado é o .env.example.
+.env
+.env.*
+!.env.example
+
+# Supabase local (portas e estado desta máquina)
+supabase/config.toml
+supabase/.gitignore
+supabase/.temp/
+supabase/.branches/
