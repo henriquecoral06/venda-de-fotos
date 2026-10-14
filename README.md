@@ -69,7 +69,8 @@ chaves que o `npx supabase status` mostrar.
 Para ligar o repositório a um Worker (Workers & Pages → Create → Import a repository):
 
 1. Nome do Worker: `venda-de-fotos` (precisa ser igual ao de `wrangler.jsonc`).
-2. Build command: `npm run build`. Deploy command: `npx wrangler deploy`.
+2. Build command: `npm run build`. Deploy command: `npx wrangler deploy`. Sem o build command
+   o deploy falha com "Missing entry-point": o app compilado (`.output`) só existe depois do build.
 3. Depois do primeiro deploy, no Supabase em _Authentication → URL Configuration_: a URL do Worker
    (`https://venda-de-fotos.<sua-conta>.workers.dev` ou o domínio próprio) em _Site URL_ e
    `https://<mesmo endereço>/**` em _Redirect URLs_.
