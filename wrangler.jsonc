@@ -1,0 +1,15 @@
+// Configuração de entrada do Worker na Cloudflare. O build (Nitro) lê este
+// arquivo, completa `main`, `assets` e as flags e grava a versão final em
+// `.output/server/wrangler.json`; o `npx wrangler deploy` usa essa versão
+// pelo redirecionamento em `.wrangler/deploy/config.json`.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // O Worker criado no painel da Cloudflare precisa ter exatamente este nome.
+  "name": "venda-de-fotos",
+  // Só valores públicos (os mesmos de `.env.production`); segredo vai em
+  // Settings → Variables and Secrets do Worker, nunca aqui.
+  "vars": {
+    "SUPABASE_URL": "https://nyvkoigzwvrdhuimiifr.supabase.co",
+    "SUPABASE_PUBLISHABLE_KEY": "sb_publishable_-7x7UIPQqCYUxkdOWR3ZrQ_DNXNmNH4",
+  },
+}

@@ -35,6 +35,8 @@ dist-ssr
 .env
 .env.*
 !.env.example
+# Só valores públicos de produção (URL e publishable key), usados no build da Cloudflare.
+!.env.production
 
 # Supabase local (portas e estado desta máquina)
 supabase/config.toml

@@ -57,6 +57,25 @@ toda mudança neste repositório.
 Para desenvolver com o Supabase local: `npx supabase init`, `npx supabase start` e use a URL e as
 chaves que o `npx supabase status` mostrar.
 
+## Produção
+
+- **Supabase:** projeto `venda-de-fotos` (região São Paulo), em
+  `https://nyvkoigzwvrdhuimiifr.supabase.co`, com as quatro migrations aplicadas e os testes
+  `RLS OK` e `REPARO OK` rodados nele.
+- **Cloudflare Workers:** o build gera um Worker (`cloudflare-module`). O nome (`venda-de-fotos`)
+  e as variáveis públicas ficam em `wrangler.jsonc`; a URL e a publishable key do build ficam em
+  `.env.production` (só valores públicos, versionado).
+
+Para ligar o repositório a um Worker (Workers & Pages → Create → Import a repository):
+
+1. Nome do Worker: `venda-de-fotos` (precisa ser igual ao de `wrangler.jsonc`).
+2. Build command: `npm run build`. Deploy command: `npx wrangler deploy`.
+3. Depois do primeiro deploy, no Supabase em _Authentication → URL Configuration_: a URL do Worker
+   (`https://venda-de-fotos.<sua-conta>.workers.dev` ou o domínio próprio) em _Site URL_ e
+   `https://<mesmo endereço>/**` em _Redirect URLs_.
+4. Abra o site e crie a primeira conta na aba Cadastrar: ela vira dona. A confirmação de e-mail
+   está ligada, então confirme pelo link recebido antes de entrar.
+
 ## Scripts
 
 | Comando             | O que faz                                 |
