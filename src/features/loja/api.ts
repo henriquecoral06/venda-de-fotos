@@ -3,6 +3,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { normalizarTelefone } from "@/lib/format";
+import { BUCKET_MARCA } from "@/lib/marca";
 
 export type ConfiguracoesLoja = Tables<"configuracoes_loja">;
 
@@ -21,6 +22,9 @@ export const esquemaLoja = z.object({
     .trim()
     .max(30, "Telefone inválido.")
     .refine((v) => v === "" || v.replace(/\D/g, "").length >= 10, "Informe o DDD e o número."),
+  logo_caminho: z.string().max(300),
+  cor_primaria: z.string().regex(/^(#[0-9a-f]{6})?$/, "Cor principal inválida."),
+  cor_secundaria: z.string().regex(/^(#[0-9a-f]{6})?$/, "Cor de apoio inválida."),
 });
 
 export type DadosLoja = z.infer<typeof esquemaLoja>;
@@ -54,10 +58,26 @@ export function textoMarcaDagua(
   );
 }
 
+/** Envia a logo já preparada para a pasta da organização; devolve o caminho. */
+export async function enviarLogo(logo: Blob, organizacaoId: string): Promise<string> {
+  const caminho = `${organizacaoId}/logo-${crypto.randomUUID()}.png`;
+  const { error } = await supabase.storage
+    .from(BUCKET_MARCA)
+    .upload(caminho, logo, { contentType: "image/png", cacheControl: "31536000" });
+  if (error) throw new Error(`Não foi possível enviar a logo: ${error.message}`);
+  return caminho;
+}
+
+/** Arquivo de logo que deixou de ser usado; falha aqui não atrapalha a tela. */
+export async function removerLogo(caminho: string): Promise<void> {
+  if (!caminho) return;
+  await supabase.storage.from(BUCKET_MARCA).remove([caminho]);
+}
+
 export function useSalvarLoja() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (dados: DadosLoja) => {
+    mutationFn: async ({ dados, logoAnterior }: { dados: DadosLoja; logoAnterior: string }) => {
       const r = esquemaLoja.safeParse(dados);
       if (!r.success) throw new Error(r.error.issues[0]?.message ?? "Dados inválidos.");
       const { data, error } = await supabase
@@ -69,6 +89,7 @@ export function useSalvarLoja() {
       if (!data || data.length === 0) {
         throw new Error("Só o dono da organização altera os dados da loja.");
       }
+      if (logoAnterior && logoAnterior !== r.data.logo_caminho) await removerLogo(logoAnterior);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_LOJA }),
   });

@@ -52,8 +52,8 @@ begin
   -- 0. linhas iniciais: configurações da loja e os dois buckets
   select count(*) into n from public.configuracoes_loja where id = 1;
   if n <> 1 then raise exception 'REPARO FALHOU: linha de configuracoes_loja não voltou'; end if;
-  select count(*) into n from storage.buckets where id in ('previas', 'originais');
-  if n <> 2 then raise exception 'REPARO FALHOU: % buckets de fotos, esperado 2', n; end if;
+  select count(*) into n from storage.buckets where id in ('previas', 'originais', 'marca');
+  if n <> 3 then raise exception 'REPARO FALHOU: % buckets, esperado 3', n; end if;
 
   -- 1. trigger recriado
   select count(*) into n from pg_trigger
@@ -118,7 +118,9 @@ begin
           and has_table_privilege('authenticated', 'public.pedidos', 'SELECT')
           and has_column_privilege('authenticated', 'public.pedidos', 'status', 'UPDATE')
           and has_table_privilege('authenticated', 'public.pedido_itens', 'SELECT')
-          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'chave_pix', 'UPDATE')) then
+          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'chave_pix', 'UPDATE')
+          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'cor_primaria', 'UPDATE')
+          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'logo_caminho', 'UPDATE')) then
     raise exception 'REPARO FALHOU: authenticated perdeu privilégio nas tabelas da venda';
   end if;
   if not has_table_privilege('service_role', 'public.organizacao_membros', 'INSERT') then
@@ -130,6 +132,7 @@ begin
      or has_function_privilege('authenticated', 'public.handle_new_user()', 'EXECUTE')
      or has_function_privilege('authenticated', 'public.set_updated_at()', 'EXECUTE')
      or has_function_privilege('anon', 'public.nome_fotografo(uuid)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.marca_publica()', 'EXECUTE')
      or has_function_privilege('authenticated', 'public.pedidos_marcar_pago_em()', 'EXECUTE') then
     raise exception 'REPARO FALHOU: função interna continua executável pelo cliente';
   end if;

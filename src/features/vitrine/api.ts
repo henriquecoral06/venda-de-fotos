@@ -19,12 +19,23 @@ const fotoPublica = z.object({
   altura: z.number(),
 });
 
+// Opcional: banco ainda sem a migration `marca_da_loja` devolve sem ela.
+const marca = z
+  .object({
+    logo: z.string().nullable(),
+    cor_primaria: z.string().nullable(),
+    cor_secundaria: z.string().nullable(),
+  })
+  .nullable()
+  .optional();
+
 const galeriaPublica = z.object({
   slug: z.string(),
   titulo: z.string(),
   descricao: z.string(),
   data_evento: z.string().nullable(),
   fotografo: z.string(),
+  marca,
   protegida: z.boolean(),
   capa: z.string().nullable(),
   total_fotos: z.number(),
@@ -47,6 +58,7 @@ const pedidoPublico = z.object({
   pago_em: z.string().nullable(),
   galeria: z.object({ titulo: z.string(), slug: z.string() }),
   fotografo: z.string(),
+  marca,
   pagamento: z.object({ chave_pix: z.string(), instrucoes: z.string(), whatsapp: z.string() }),
   itens: z.array(
     z.object({
