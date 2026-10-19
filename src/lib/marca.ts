@@ -6,7 +6,12 @@ import { supabase } from "@/integrations/supabase/client";
  */
 
 export const BUCKET_MARCA = "marca";
-export const TIPOS_LOGO = ["image/png", "image/jpeg", "image/webp"] as const;
+/**
+ * Formatos aceitos no envio. SVG é convertido em PNG no navegador antes de
+ * subir: o bucket só guarda imagem rasterizada, porque um SVG servido pelo
+ * Storage pode carregar script.
+ */
+export const TIPOS_LOGO = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"] as const;
 export const TAMANHO_MAXIMO_LOGO = 2 * 1024 * 1024;
 
 const LADO_LOGO = 512;
@@ -145,16 +150,66 @@ export async function extrairCores(imagem: Blob, quantidade = 6): Promise<string
   return escolhidas;
 }
 
+function ehSvg(arquivo: File): boolean {
+  return arquivo.type === "image/svg+xml" || arquivo.name.toLowerCase().endsWith(".svg");
+}
+
 export function validarLogo(arquivo: File): string | null {
-  if (!(TIPOS_LOGO as readonly string[]).includes(arquivo.type)) {
-    return "Envie a logo em PNG, JPG ou WebP.";
+  if (!(TIPOS_LOGO as readonly string[]).includes(arquivo.type) && !ehSvg(arquivo)) {
+    return "Envie a logo em PNG, JPG, WebP ou SVG.";
   }
   if (arquivo.size > 10 * 1024 * 1024) return "A logo passa de 10 MB.";
   return null;
 }
 
-/** Logo reduzida para 512 px no lado maior, em PNG (mantém a transparência). */
-export async function prepararLogo(arquivo: File): Promise<Blob> {
+/**
+ * Tamanho de desenho do SVG: `width`/`height` em px ou, sem eles, o
+ * `viewBox`. Sem nenhum dos dois, quadrado.
+ */
+function proporcaoSvg(texto: string): { largura: number; altura: number } {
+  const raiz = /<svg\b[^>]*>/i.exec(texto)?.[0] ?? "";
+  const atributo = (nome: string) =>
+    Number.parseFloat(
+      new RegExp(`\\s${nome}\\s*=\\s*["']([\\d.]+)(px)?["']`, "i").exec(raiz)?.[1] ?? "",
+    );
+  const largura = atributo("width");
+  const altura = atributo("height");
+  if (largura > 0 && altura > 0) return { largura, altura };
+  const caixa = /viewBox\s*=\s*["']([^"']+)["']/i
+    .exec(raiz)?.[1]
+    ?.trim()
+    .split(/[\s,]+/)
+    .map(Number);
+  const [, , vl, va] = caixa ?? [];
+  if (vl && va && vl > 0 && va > 0) return { largura: vl, altura: va };
+  return { largura: LADO_LOGO, altura: LADO_LOGO };
+}
+
+/** SVG desenhado já em 512 px no lado maior (vetor: aumenta sem perder nitidez). */
+async function desenharSvg(arquivo: File): Promise<HTMLCanvasElement> {
+  const { largura, altura } = proporcaoSvg(await arquivo.text());
+  const escala = LADO_LOGO / Math.max(largura, altura);
+  const url = URL.createObjectURL(new Blob([arquivo], { type: "image/svg+xml" }));
+  try {
+    const imagem = new Image();
+    imagem.decoding = "async";
+    imagem.src = url;
+    await imagem.decode().catch(() => {
+      throw new Error("Não foi possível ler o SVG. Exporte a logo de novo ou envie em PNG.");
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(largura * escala));
+    canvas.height = Math.max(1, Math.round(altura * escala));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("O navegador não conseguiu processar a logo.");
+    ctx.drawImage(imagem, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function desenharImagem(arquivo: File): Promise<HTMLCanvasElement> {
   const bitmap = await createImageBitmap(arquivo);
   const escala = Math.min(1, LADO_LOGO / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement("canvas");
@@ -165,6 +220,12 @@ export async function prepararLogo(arquivo: File): Promise<Blob> {
   ctx.imageSmoothingQuality = "high";
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
   bitmap.close();
+  return canvas;
+}
+
+/** Logo em PNG com até 512 px no lado maior (mantém a transparência). */
+export async function prepararLogo(arquivo: File): Promise<Blob> {
+  const canvas = ehSvg(arquivo) ? await desenharSvg(arquivo) : await desenharImagem(arquivo);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("Não foi possível preparar a logo.");
   if (blob.size > TAMANHO_MAXIMO_LOGO) throw new Error("A logo ficou maior que 2 MB.");

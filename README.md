@@ -22,7 +22,8 @@ toda mudança neste repositório.
   com todas as fotos, mensagem).
 - `/pedidos`: pedidos dos clientes com filtro por situação, detalhe com as fotos escolhidas,
   confirmar pagamento e cancelar.
-- `/loja`: logo e cores da marca (sugeridas a partir da logo), nome exibido ao cliente, texto da
+- `/loja`: logo (PNG, JPG, WebP ou SVG; o SVG vira PNG no navegador) e cores da marca (sugeridas a
+  partir da logo), nome exibido ao cliente, texto da
   marca d'água, chave Pix, WhatsApp para comprovantes e instruções de pagamento (só o dono edita).
   A logo e as cores aparecem na galeria e no pedido do cliente.
 - `/equipe` e `/perfil`, do template.
