@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { Check, Loader2, Lock, ShoppingBag } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Check, Loader2, Lock, ScanFace, ShoppingBag } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,9 +12,11 @@ import { LayoutPublico } from "@/components/layout/LayoutPublico";
 import {
   armazenamento,
   useGaleriaPublica,
+  type FotoEncontrada,
   type FotoPublica,
   type GaleriaPublica,
 } from "@/features/vitrine/api";
+import { BuscaSelfie } from "@/features/vitrine/BuscaSelfie";
 import { Checkout, type ModoCompra } from "@/features/vitrine/Checkout";
 import { Lightbox } from "@/features/vitrine/Lightbox";
 import { brl, dataBR } from "@/lib/format";
@@ -166,6 +169,21 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   });
   const [indice, setIndice] = useState<number | null>(null);
   const [modo, setModo] = useState<ModoCompra | null>(null);
+  const evento = galeria.tipo === "evento";
+  const buscaRosto = evento && (galeria.busca_rosto ?? false);
+  // Resultado da busca por selfie, na ordem de semelhança; nulo = mostrar todas.
+  const [encontradas, setEncontradas] = useState<FotoEncontrada[] | null>(null);
+  const [buscandoSelfie, setBuscandoSelfie] = useState(false);
+
+  const exibidas = useMemo(() => {
+    if (!encontradas) return fotos;
+    const porId = new Map(fotos.map((f) => [f.id, f]));
+    return encontradas.map((e) => porId.get(e.id)).filter((f): f is FotoPublica => f !== undefined);
+  }, [fotos, encontradas]);
+  const talvez = useMemo(
+    () => new Set((encontradas ?? []).filter((e) => !e.provavel).map((e) => e.id)),
+    [encontradas],
+  );
 
   useEffect(() => {
     armazenamento.gravarSelecao(galeria.slug, [...selecionadas]);
@@ -212,13 +230,20 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
           <h1 className="text-heading-xl md:text-display-lg">{galeria.titulo}</h1>
           <p className="mt-2 text-sm text-white/80">
             {[
+              evento ? galeria.categoria || null : null,
               galeria.data_evento ? dataBR(galeria.data_evento) : null,
+              evento ? galeria.local || null : null,
               rotuloFotos(fotos.length),
               galeria.fotografo || null,
             ]
               .filter(Boolean)
               .join(" · ")}
           </p>
+          {evento && (
+            <Link to="/eventos" className="mt-3 inline-block text-sm text-white/90 underline">
+              Ver outros eventos
+            </Link>
+          )}
         </div>
       </section>
 
@@ -243,14 +268,51 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
           )}
         </div>
 
+        {buscaRosto && fotos.length > 0 && (
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
+            <div className="flex items-start gap-3">
+              <ScanFace className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <p className="text-label-md text-foreground">
+                  {encontradas
+                    ? encontradas.length > 0
+                      ? `Encontramos ${rotuloFotos(encontradas.length)} com você`
+                      : "Não encontramos você nas fotos"
+                    : "Encontre as suas fotos com uma selfie"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {encontradas
+                    ? encontradas.length > 0
+                      ? talvez.size > 0
+                        ? "Da mais parecida para a menos. As marcadas com “Talvez seja você” são parecidas: confira antes de escolher."
+                        : "Da mais parecida para a menos. Confira e escolha as suas."
+                      : "Tente outra selfie, de frente e com boa luz, ou veja todas as fotos."
+                    : "Em vez de olhar todas as fotos, mande uma selfie e veja só as suas."}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {encontradas && (
+                <Button variant="outline" onClick={() => setEncontradas(null)}>
+                  Ver todas as fotos
+                </Button>
+              )}
+              <Button className={CLASSE_BOTAO_MARCA} onClick={() => setBuscandoSelfie(true)}>
+                <ScanFace className="size-4" />
+                {encontradas ? "Nova selfie" : "Buscar por selfie"}
+              </Button>
+            </div>
+          </Card>
+        )}
+
         {fotos.length === 0 ? (
           <EstadoVazio
             titulo="As fotos ainda não chegaram"
             descricao="O fotógrafo ainda está preparando esta galeria. Volte mais tarde."
           />
-        ) : (
+        ) : exibidas.length === 0 ? null : (
           <ul className="columns-2 gap-3 md:columns-3 lg:columns-4 [&>li]:mb-3">
-            {fotos.map((f, i) => {
+            {exibidas.map((f, i) => {
               const marcada = selecionadas.has(f.id);
               return (
                 <li key={f.id} className="group relative break-inside-avoid">
@@ -289,6 +351,14 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
                   >
                     <Check className="size-4" strokeWidth={2.5} />
                   </button>
+                  {talvez.has(f.id) && (
+                    <Badge
+                      variant="secondary"
+                      className="pointer-events-none absolute bottom-2 left-2"
+                    >
+                      Talvez seja você
+                    </Badge>
+                  )}
                   {marcada && (
                     <span className="pointer-events-none absolute inset-0 rounded-lg ring-4 ring-primary ring-inset" />
                   )}
@@ -311,14 +381,28 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
       )}
 
       <Lightbox
-        fotos={fotos}
+        fotos={exibidas}
         indice={indice}
         aoMudarIndice={setIndice}
         aoFechar={() => setIndice(null)}
         selecionadas={selecionadas}
         aoAlternar={alternar}
         podeSelecionar
+        whatsappRemocao={evento ? (galeria.contato_whatsapp ?? "") : ""}
       />
+
+      {buscaRosto && (
+        <BuscaSelfie
+          aberto={buscandoSelfie}
+          aoMudarAberto={setBuscandoSelfie}
+          slug={galeria.slug}
+          senha={senha}
+          aoEncontrar={(ids) => {
+            setEncontradas(ids);
+            setIndice(null);
+          }}
+        />
+      )}
 
       <Checkout
         galeria={galeria}

@@ -34,6 +34,8 @@ declare
   cod text;
   cod_pacote text;
   j jsonb;
+  gal_evento uuid;
+  foto_evento uuid;
   papel_atual public.papel_organizacao;
   aberto boolean;
   n int;
@@ -475,6 +477,68 @@ begin
      or j -> 'marca' ->> 'logo' is distinct from org_id || '/logo.png' then
     raise exception 'RLS FALHOU: galeria pública sem a marca: %', j -> 'marca';
   end if;
+
+  -- 28. evento aberto: vitrine pública e busca por selfie (vetor de rosto)
+  insert into public.galerias (user_id, organizacao_id, titulo, slug, status, tipo, categoria, local)
+  values (u_dono, org_id, 'Torneio de futebol', 'rls-evento', 'publicada', 'evento', 'Futebol', 'Ginásio')
+  returning id into gal_evento;
+  insert into public.fotos (galeria_id, user_id, organizacao_id, nome_arquivo,
+                            caminho_original, caminho_previa, caminho_miniatura, largura, altura)
+  values (gal_evento, u_dono, org_id, 'e.jpg', org_id || '/rls/e.jpg', org_id || '/rls/e-previa.jpg',
+          org_id || '/rls/e-mini.jpg', 100, 80)
+  returning id into foto_evento;
+  insert into public.rostos (foto_id, galeria_id, user_id, organizacao_id, embedding)
+  values (foto_evento, gal_evento, u_dono, org_id, array_fill(0.1::real, array[128])::extensions.vector);
+  begin
+    insert into public.rostos (foto_id, galeria_id, user_id, organizacao_id, embedding)
+    values (foto_a, gal_evento, u_dono, org_id, array_fill(0.1::real, array[128])::extensions.vector);
+    raise exception 'RLS FALHOU: rosto aceito com foto de outra galeria';
+  exception when insufficient_privilege then null;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  begin
+    perform 1 from public.rostos;
+    raise exception 'RLS FALHOU: visitante leu a tabela rostos';
+  exception when insufficient_privilege then null;
+  end;
+  j := public.eventos_publicos();
+  if not exists (select 1 from jsonb_array_elements(j -> 'eventos') e where e ->> 'slug' = 'rls-evento') then
+    raise exception 'RLS FALHOU: evento publicado fora da vitrine: %', j;
+  end if;
+  if exists (select 1 from jsonb_array_elements(j -> 'eventos') e where e ->> 'slug' = 'rls-galeria-org') then
+    raise exception 'RLS FALHOU: galeria de cliente apareceu na vitrine';
+  end if;
+  j := public.galeria_publica('rls-evento', '');
+  if j ->> 'tipo' <> 'evento' or not (j ->> 'busca_rosto')::boolean or j ->> 'categoria' <> 'Futebol' then
+    raise exception 'RLS FALHOU: galeria de evento veio errada: %', j;
+  end if;
+  j := public.buscar_fotos_por_rosto('rls-evento', '', array_fill(0.11::real, array[128]));
+  if jsonb_array_length(j) <> 1 or j -> 0 ->> 'id' <> foto_evento::text then
+    raise exception 'RLS FALHOU: selfie parecida não achou a foto: %', j;
+  end if;
+  j := public.buscar_fotos_por_rosto('rls-evento', '', array_fill(0.9::real, array[128]));
+  if jsonb_array_length(j) <> 0 then
+    raise exception 'RLS FALHOU: selfie diferente achou foto: %', j;
+  end if;
+  begin
+    perform public.buscar_fotos_por_rosto('rls-galeria-org', 'segredo', array_fill(0.1::real, array[128]));
+    raise exception 'RLS FALHOU: busca por selfie em galeria de cliente';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  begin
+    perform public.buscar_fotos_por_rosto('rls-evento', '', array_fill(0.1::real, array[3]));
+    raise exception 'RLS FALHOU: busca aceitou vetor de tamanho errado';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
   begin
     delete from public.galerias where id = gal_org;
     raise exception 'RLS FALHOU: galeria com pedido foi excluída';

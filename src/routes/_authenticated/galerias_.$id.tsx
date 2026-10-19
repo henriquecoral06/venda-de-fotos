@@ -28,6 +28,7 @@ import {
   type Autoria,
   type Foto,
 } from "@/features/galerias/api";
+import { CartaoRostos } from "@/features/galerias/CartaoRostos";
 import { EnvioFotos } from "@/features/galerias/EnvioFotos";
 import { FormularioGaleria } from "@/features/galerias/FormularioGaleria";
 import { GradeFotos } from "@/features/galerias/GradeFotos";
@@ -127,8 +128,11 @@ function PaginaGaleria() {
     });
   }
 
+  const evento = g.tipo === "evento";
+  const indexarRostos = evento && g.busca_rosto;
   const resumo = [
-    g.cliente_nome || null,
+    evento ? [g.categoria, g.local].filter(Boolean).join(", ") || "Evento aberto" : null,
+    evento ? null : g.cliente_nome || null,
     g.data_evento ? dataBR(g.data_evento) : null,
     g.preco_foto > 0 ? `${brl(g.preco_foto)} por foto` : "Download grátis",
     g.preco_pacote !== null ? `todas por ${brl(g.preco_pacote)}` : null,
@@ -165,6 +169,9 @@ function PaginaGaleria() {
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={VARIANTE_STATUS_GALERIA[g.status]}>{ROTULO_STATUS_GALERIA[g.status]}</Badge>
+        {evento && (
+          <Badge variant="outline">Evento aberto{g.categoria ? ` · ${g.categoria}` : ""}</Badge>
+        )}
         {g.senha && (
           <Badge variant="outline" className="gap-1">
             <Lock className="size-3" aria-hidden="true" />
@@ -184,7 +191,21 @@ function PaginaGaleria() {
         </Card>
       )}
 
-      <EnvioFotos galeriaId={g.id} autoria={autoria} marca={marca} proximaOrdem={proximaOrdem} />
+      {evento && g.senha && (
+        <Card className="bg-info-soft p-4 text-sm text-info">
+          Evento com senha não aparece na vitrine de eventos: só quem tem o link e a senha abre.
+        </Card>
+      )}
+
+      {indexarRostos && <CartaoRostos galeriaId={g.id} autoria={autoria} />}
+
+      <EnvioFotos
+        galeriaId={g.id}
+        autoria={autoria}
+        marca={marca}
+        proximaOrdem={proximaOrdem}
+        indexarRostos={indexarRostos}
+      />
 
       {fotos.isPending ? (
         <SkeletonLista itens={2} />

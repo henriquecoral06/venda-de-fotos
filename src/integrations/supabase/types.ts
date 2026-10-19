@@ -62,6 +62,7 @@ export type Database = {
           nome_arquivo: string
           ordem: number
           organizacao_id: string | null
+          rostos_analisados_em: string | null
           tamanho_bytes: number
           updated_at: string
           user_id: string
@@ -78,6 +79,7 @@ export type Database = {
           nome_arquivo: string
           ordem?: number
           organizacao_id?: string | null
+          rostos_analisados_em?: string | null
           tamanho_bytes?: number
           updated_at?: string
           user_id: string
@@ -94,6 +96,7 @@ export type Database = {
           nome_arquivo?: string
           ordem?: number
           organizacao_id?: string | null
+          rostos_analisados_em?: string | null
           tamanho_bytes?: number
           updated_at?: string
           user_id?: string
@@ -124,55 +127,67 @@ export type Database = {
       }
       galerias: {
         Row: {
+          busca_rosto: boolean
           capa_foto_id: string | null
+          categoria: string
           cliente_email: string
           cliente_nome: string
           created_at: string
           data_evento: string | null
           descricao: string
           id: string
+          local: string
           organizacao_id: string | null
           preco_foto: number
           preco_pacote: number | null
           senha: string
           slug: string
           status: Database["public"]["Enums"]["status_galeria"]
+          tipo: Database["public"]["Enums"]["tipo_galeria"]
           titulo: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          busca_rosto?: boolean
           capa_foto_id?: string | null
+          categoria?: string
           cliente_email?: string
           cliente_nome?: string
           created_at?: string
           data_evento?: string | null
           descricao?: string
           id?: string
+          local?: string
           organizacao_id?: string | null
           preco_foto?: number
           preco_pacote?: number | null
           senha?: string
           slug: string
           status?: Database["public"]["Enums"]["status_galeria"]
+          tipo?: Database["public"]["Enums"]["tipo_galeria"]
           titulo: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          busca_rosto?: boolean
           capa_foto_id?: string | null
+          categoria?: string
           cliente_email?: string
           cliente_nome?: string
           created_at?: string
           data_evento?: string | null
           descricao?: string
           id?: string
+          local?: string
           organizacao_id?: string | null
           preco_foto?: number
           preco_pacote?: number | null
           senha?: string
           slug?: string
           status?: Database["public"]["Enums"]["status_galeria"]
+          tipo?: Database["public"]["Enums"]["tipo_galeria"]
           titulo?: string
           updated_at?: string
           user_id?: string
@@ -388,11 +403,74 @@ export type Database = {
         }
         Relationships: []
       }
+      rostos: {
+        Row: {
+          created_at: string
+          embedding: string
+          foto_id: string
+          galeria_id: string
+          id: string
+          organizacao_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          embedding: string
+          foto_id: string
+          galeria_id: string
+          id?: string
+          organizacao_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          embedding?: string
+          foto_id?: string
+          galeria_id?: string
+          id?: string
+          organizacao_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rostos_foto_id_fkey"
+            columns: ["foto_id"]
+            isOneToOne: false
+            referencedRelation: "fotos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rostos_galeria_id_fkey"
+            columns: ["galeria_id"]
+            isOneToOne: false
+            referencedRelation: "galerias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rostos_organizacao_id_fkey"
+            columns: ["organizacao_id"]
+            isOneToOne: false
+            referencedRelation: "organizacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rostos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      buscar_fotos_por_rosto: {
+        Args: { _rosto: number[]; _senha: string; _slug: string }
+        Returns: Json
+      }
       contas_fora_da_organizacao: {
         Args: Record<PropertyKey, never>
         Returns: { email: string; nome: string; user_id: string }[]
@@ -410,6 +488,7 @@ export type Database = {
         Returns: string
       }
       definir_cadastro_aberto: { Args: { _aberto: boolean }; Returns: boolean }
+      eventos_publicos: { Args: Record<PropertyKey, never>; Returns: Json }
       foto_original_liberada: { Args: { _caminho: string }; Returns: boolean }
       galeria_publica: { Args: { _senha?: string; _slug: string }; Returns: Json }
       garantir_instalacao: { Args: Record<PropertyKey, never>; Returns: boolean }
@@ -428,6 +507,7 @@ export type Database = {
       papel_organizacao: "dono" | "membro"
       status_galeria: "rascunho" | "publicada" | "arquivada"
       status_pedido: "aguardando_pagamento" | "pago" | "cancelado"
+      tipo_galeria: "privada" | "evento"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -556,6 +636,7 @@ export const Constants = {
       papel_organizacao: ["dono", "membro"],
       status_galeria: ["rascunho", "publicada", "arquivada"],
       status_pedido: ["aguardando_pagamento", "pago", "cancelado"],
+      tipo_galeria: ["privada", "evento"],
     },
   },
 } as const;

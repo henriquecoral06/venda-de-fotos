@@ -36,6 +36,12 @@ const galeriaPublica = z.object({
   data_evento: z.string().nullable(),
   fotografo: z.string(),
   marca,
+  // Opcionais: banco sem a migration `eventos_abertos` devolve sem eles.
+  tipo: z.enum(["privada", "evento"]).optional(),
+  categoria: z.string().optional(),
+  local: z.string().optional(),
+  busca_rosto: z.boolean().optional(),
+  contato_whatsapp: z.string().nullable().optional(),
   protegida: z.boolean(),
   capa: z.string().nullable(),
   total_fotos: z.number(),
@@ -72,6 +78,28 @@ const pedidoPublico = z.object({
   ),
 });
 
+const eventoPublico = z.object({
+  slug: z.string(),
+  titulo: z.string(),
+  categoria: z.string(),
+  local: z.string(),
+  data_evento: z.string().nullable(),
+  preco_foto: z.number(),
+  busca_rosto: z.boolean(),
+  total_fotos: z.number(),
+  capa: z.string().nullable(),
+});
+
+const vitrinePublica = z.object({
+  fotografo: z.string(),
+  marca,
+  eventos: z.array(eventoPublico),
+});
+
+const resultadoBusca = z.array(z.object({ id: z.string(), distancia: z.number() }));
+
+export type EventoPublico = z.infer<typeof eventoPublico>;
+export type VitrinePublica = z.infer<typeof vitrinePublica>;
 export type FotoPublica = z.infer<typeof fotoPublica>;
 export type GaleriaPublica = z.infer<typeof galeriaPublica>;
 export type PedidoPublico = z.infer<typeof pedidoPublico>;
@@ -96,6 +124,50 @@ export function useGaleriaPublica(slug: string, senha: string) {
       return ler(galeriaPublica, data);
     },
   });
+}
+
+/** Eventos abertos e publicados do estúdio, para a vitrine `/eventos`. */
+export function useVitrine() {
+  return useQuery({
+    queryKey: [...CHAVE_VITRINE, "eventos"],
+    queryFn: async (): Promise<VitrinePublica> => {
+      const { data, error } = await supabase.rpc("eventos_publicos");
+      if (error) throw new Error(error.message);
+      const vitrine = ler(vitrinePublica, data);
+      if (!vitrine) throw new Error("Vitrine indisponível.");
+      return vitrine;
+    },
+  });
+}
+
+/** Acima disto (até o corte de 0,5 do banco) o rosto é parecido, mas pode ser outra pessoa. */
+const DISTANCIA_PROVAVEL = 0.4;
+
+export interface FotoEncontrada {
+  id: string;
+  /** Muito provável que seja a pessoa; falso = "talvez seja você". */
+  provavel: boolean;
+}
+
+/**
+ * Fotos da galeria em que o rosto aparece, da mais parecida para a menos.
+ * Só o vetor (128 números) sai do navegador.
+ */
+export async function buscarFotosPorRosto(
+  slug: string,
+  senha: string,
+  rosto: number[],
+): Promise<FotoEncontrada[]> {
+  const { data, error } = await supabase.rpc("buscar_fotos_por_rosto", {
+    _slug: slug,
+    _senha: senha,
+    _rosto: rosto,
+  });
+  if (error) throw new Error(error.message);
+  return (ler(resultadoBusca, data) ?? []).map((r) => ({
+    id: r.id,
+    provavel: r.distancia < DISTANCIA_PROVAVEL,
+  }));
 }
 
 export const esquemaComprador = z.object({

@@ -18,6 +18,7 @@ export function Lightbox({
   selecionadas,
   aoAlternar,
   podeSelecionar,
+  whatsappRemocao = "",
 }: {
   fotos: FotoPublica[];
   indice: number | null;
@@ -26,6 +27,8 @@ export function Lightbox({
   selecionadas: Set<string>;
   aoAlternar: (id: string) => void;
   podeSelecionar: boolean;
+  /** Evento aberto: quem aparece na foto pede a remoção ao estúdio (LGPD). */
+  whatsappRemocao?: string;
 }) {
   const foto = indice === null ? undefined : fotos[indice];
   const total = fotos.length;
@@ -59,6 +62,18 @@ export function Lightbox({
             {indice !== null ? indice + 1 : 0} / {total}
           </span>
           <div className="flex items-center gap-2">
+            {whatsappRemocao && foto && (
+              <a
+                href={`https://wa.me/${whatsappRemocao}?text=${encodeURIComponent(
+                  `Olá! Apareço na foto ${foto.nome} (${window.location.href}) e gostaria que ela fosse removida.`,
+                )}`}
+                target="_blank"
+                rel="noreferrer"
+                className="hidden text-caption text-white/70 underline hover:text-white sm:inline"
+              >
+                Esta foto é sua? Pedir remoção
+              </a>
+            )}
             {podeSelecionar && foto && (
               <Button
                 size="sm"
