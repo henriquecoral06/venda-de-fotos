@@ -144,7 +144,7 @@ export function CartaoMarca({
           )}
         </div>
         <p className="w-full text-caption text-muted-foreground">
-          PNG com fundo transparente fica melhor. JPG e WebP também servem.
+          SVG ou PNG com fundo transparente ficam melhor. JPG e WebP também servem.
         </p>
       </div>
 
