@@ -222,25 +222,88 @@ async function removerArquivos(
   ]);
 }
 
+async function excluirGaleria(id: string): Promise<void> {
+  const fotos = await supabase
+    .from("fotos")
+    .select("caminho_original, caminho_previa, caminho_miniatura")
+    .eq("galeria_id", id);
+  if (fotos.error) throw erroLegivel(fotos.error.message);
+
+  // Primeiro a linha: com pedido, o banco recusa e os arquivos ficam.
+  const { data, error } = await supabase.from("galerias").delete().eq("id", id).select("id");
+  if (error) throw erroLegivel(error.message);
+  if (!data || data.length === 0) {
+    throw new Error("Você não tem permissão para excluir esta galeria.");
+  }
+  await removerArquivos(fotos.data ?? []);
+}
+
 export function useExcluirGaleria() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const fotos = await supabase
-        .from("fotos")
-        .select("caminho_original, caminho_previa, caminho_miniatura")
-        .eq("galeria_id", id);
-      if (fotos.error) throw erroLegivel(fotos.error.message);
-
-      // Primeiro a linha: com pedido, o banco recusa e os arquivos ficam.
-      const { data, error } = await supabase.from("galerias").delete().eq("id", id).select("id");
-      if (error) throw erroLegivel(error.message);
-      if (!data || data.length === 0) {
-        throw new Error("Você não tem permissão para excluir esta galeria.");
-      }
-      await removerArquivos(fotos.data ?? []);
-    },
+    mutationFn: excluirGaleria,
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_GALERIAS }),
+  });
+}
+
+/** Resultado de uma ação em massa: o que deu certo e o que o banco recusou. */
+export interface ResultadoEmMassa {
+  feitas: number;
+  recusadas: number;
+  /** Primeira mensagem de recusa, para o toast. */
+  motivo: string | null;
+}
+
+/** Troca a situação de várias galerias de uma vez. */
+export function useMudarStatusGalerias() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      ids,
+      status,
+    }: {
+      ids: string[];
+      status: StatusGaleria;
+    }): Promise<ResultadoEmMassa> => {
+      const { data, error } = await supabase
+        .from("galerias")
+        .update({ status })
+        .in("id", ids)
+        .select("id");
+      if (error) throw erroLegivel(error.message);
+      // Fora da policy o update ignora a linha, sem erro.
+      const feitas = data?.length ?? 0;
+      return {
+        feitas,
+        recusadas: ids.length - feitas,
+        motivo: feitas < ids.length ? "Sem permissão para alterar algumas galerias." : null,
+      };
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: CHAVE_GALERIAS }),
+  });
+}
+
+/**
+ * Exclui várias galerias, uma a uma: a que tem pedido é recusada pelo banco e
+ * as outras seguem.
+ */
+export function useExcluirGalerias() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]): Promise<ResultadoEmMassa> => {
+      let feitas = 0;
+      let motivo: string | null = null;
+      for (const id of ids) {
+        try {
+          await excluirGaleria(id);
+          feitas += 1;
+        } catch (e: unknown) {
+          motivo ??= e instanceof Error ? e.message : "Não foi possível excluir.";
+        }
+      }
+      return { feitas, recusadas: ids.length - feitas, motivo };
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: CHAVE_GALERIAS }),
   });
 }
 

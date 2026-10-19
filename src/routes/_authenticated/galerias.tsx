@@ -1,12 +1,30 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ExternalLink, Plus } from "lucide-react";
+import { Archive, Eye, EyeOff, ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { BarraSelecao } from "@/components/BarraSelecao";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonTabela } from "@/components/Skeletons";
 import { usePerfil } from "@/features/perfil/api";
-import { useGalerias, type Autoria, type StatusGaleria } from "@/features/galerias/api";
+import {
+  useExcluirGalerias,
+  useGalerias,
+  useMudarStatusGalerias,
+  type Autoria,
+  type ResultadoEmMassa,
+  type StatusGaleria,
+} from "@/features/galerias/api";
 import { FormularioGaleria } from "@/features/galerias/FormularioGaleria";
 import { TabelaGalerias } from "@/features/galerias/TabelaGalerias";
 import { BRAND } from "@/config/brand";
@@ -17,6 +35,35 @@ export const Route = createFileRoute("/_authenticated/galerias")({
 });
 
 type Filtro = "ativas" | StatusGaleria;
+
+/** "1 galeria" / "3 galerias", e o "s" do particípio que vem depois. */
+function galerias(qtd: number): { texto: string; s: string } {
+  return {
+    texto: `${qtd.toLocaleString("pt-BR")} galeria${qtd === 1 ? "" : "s"}`,
+    s: qtd === 1 ? "" : "s",
+  };
+}
+
+const ACOES_STATUS = [
+  {
+    status: "publicada",
+    rotulo: "Publicar",
+    icone: Eye,
+    mensagem: (n: number) => `${galerias(n).texto} publicada${galerias(n).s}.`,
+  },
+  {
+    status: "rascunho",
+    rotulo: "Voltar a rascunho",
+    icone: EyeOff,
+    mensagem: (n: number) => `${galerias(n).texto} em rascunho.`,
+  },
+  {
+    status: "arquivada",
+    rotulo: "Arquivar",
+    icone: Archive,
+    mensagem: (n: number) => `${galerias(n).texto} arquivada${galerias(n).s}.`,
+  },
+] as const;
 
 const FILTROS = [
   { valor: "ativas", rotulo: "Ativas" },
@@ -31,6 +78,11 @@ function PaginaGalerias() {
   const lista = useGalerias();
   const [criando, setCriando] = useState<number | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("ativas");
+  const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
+  const mudarStatus = useMudarStatusGalerias();
+  const excluir = useExcluirGalerias();
+  const ocupado = mudarStatus.isPending || excluir.isPending;
 
   const autoria: Autoria = {
     userId: ctx?.perfil?.id ?? "",
@@ -42,6 +94,42 @@ function PaginaGalerias() {
     if (filtro === "ativas") return todas.filter((g) => g.status !== "arquivada");
     return todas.filter((g) => g.status === filtro);
   }, [lista.data, filtro]);
+
+  // Só conta o que está na tela: trocar o filtro não age sobre linha escondida.
+  const ids = useMemo(
+    () => filtradas.filter((g) => selecionadas.has(g.id)).map((g) => g.id),
+    [filtradas, selecionadas],
+  );
+
+  function avisar(r: ResultadoEmMassa, sucesso: string) {
+    if (r.feitas > 0) toast.success(sucesso);
+    if (r.recusadas > 0) {
+      toast.error(
+        `${r.recusadas.toLocaleString("pt-BR")} não ${r.recusadas === 1 ? "pôde" : "puderam"}: ${r.motivo ?? "erro desconhecido"}`,
+      );
+    }
+    setSelecionadas(new Set());
+  }
+
+  function aplicarStatus(status: StatusGaleria, mensagem: (n: number) => string) {
+    mudarStatus.mutate(
+      { ids, status },
+      {
+        onSuccess: (r) => avisar(r, mensagem(r.feitas)),
+        onError: (e: Error) => toast.error(e.message),
+      },
+    );
+  }
+
+  function confirmarExclusao() {
+    excluir.mutate(ids, {
+      onSuccess: (r) => {
+        setConfirmandoExclusao(false);
+        avisar(r, `${galerias(r.feitas).texto} excluída${galerias(r.feitas).s}.`);
+      },
+      onError: (e: Error) => toast.error(e.message),
+    });
+  }
 
   const botaoNova = (
     <Button onClick={() => setCriando(Date.now())}>
@@ -88,15 +176,78 @@ function PaginaGalerias() {
         />
       ) : (
         <div className="space-y-4">
-          <ControleSegmentado
-            opcoes={FILTROS}
-            valor={filtro}
-            aoMudar={setFiltro}
-            rotuloAria="Filtrar galerias"
+          {ids.length > 0 ? (
+            <BarraSelecao
+              quantidade={ids.length}
+              singular="galeria selecionada"
+              plural="galerias selecionadas"
+              aoLimpar={() => setSelecionadas(new Set())}
+            >
+              {ACOES_STATUS.map((a) => (
+                <Button
+                  key={a.status}
+                  size="sm"
+                  variant="outline"
+                  disabled={ocupado}
+                  onClick={() => aplicarStatus(a.status, a.mensagem)}
+                >
+                  {mudarStatus.isPending && mudarStatus.variables?.status === a.status ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <a.icone className="size-4" />
+                  )}
+                  {a.rotulo}
+                </Button>
+              ))}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="text-destructive hover:text-destructive"
+                disabled={ocupado}
+                onClick={() => setConfirmandoExclusao(true)}
+              >
+                <Trash2 className="size-4" />
+                Excluir
+              </Button>
+            </BarraSelecao>
+          ) : (
+            <ControleSegmentado
+              opcoes={FILTROS}
+              valor={filtro}
+              aoMudar={setFiltro}
+              rotuloAria="Filtrar galerias"
+            />
+          )}
+          <TabelaGalerias
+            galerias={filtradas}
+            selecao={{ selecionadas, aoMudar: setSelecionadas, rotulo: (g) => g.titulo }}
           />
-          <TabelaGalerias galerias={filtradas} />
         </div>
       )}
+
+      <AlertDialog
+        open={confirmandoExclusao}
+        onOpenChange={(v) => !v && !excluir.isPending && setConfirmandoExclusao(false)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Excluir {ids.length === 1 ? "1 galeria" : `${ids.length} galerias`}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              As galerias e as fotos delas serão apagadas. Galeria com pedidos não é excluída: ela
+              fica de fora e pode ser arquivada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={excluir.isPending}>Cancelar</AlertDialogCancel>
+            <Button variant="destructive" disabled={excluir.isPending} onClick={confirmarExclusao}>
+              {excluir.isPending && <Loader2 className="size-4 animate-spin" />}
+              Excluir
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {criando !== null && (
         <FormularioGaleria

@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 export type Alinhamento = "esquerda" | "direita" | "centro";
@@ -19,6 +20,17 @@ export interface Ordenacao {
 }
 export type ValorOrdenavel = string | number | Date | null | undefined;
 export type LinhaRodape = Record<string, ReactNode>;
+
+/**
+ * Seleção de linhas por caixinha (ações em massa). As chaves são as de
+ * `chaveLinha`; o cabeçalho marca ou desmarca todas as linhas exibidas.
+ */
+export interface SelecaoTabela<L> {
+  selecionadas: ReadonlySet<string>;
+  aoMudar: (selecionadas: Set<string>) => void;
+  /** Nome da linha para leitor de tela ("Selecionar <rótulo>"). */
+  rotulo: (linha: L) => string;
+}
 
 export interface ColunaTabela<L> {
   chave: string;
@@ -91,7 +103,8 @@ function IconeOrdenacao({ direcao }: { direcao: DirecaoOrdenacao | null }) {
 /**
  * Tabela dirigida por dados. Ordenação interna por clique no cabeçalho
  * (`ordenavel`) ou controlada (`ordenacao` + `aoOrdenar`); `rodape` vai em
- * `<tfoot>` e não se move quando a ordem muda.
+ * `<tfoot>` e não se move quando a ordem muda. Com `selecao`, cada linha ganha
+ * uma caixinha à esquerda.
  */
 export function Tabela<L>({
   colunas,
@@ -103,6 +116,7 @@ export function Tabela<L>({
   ordenacaoInicial = null,
   vazio: mensagemVazia = "Nada por aqui ainda.",
   className,
+  selecao,
 }: {
   colunas: ColunaTabela<L>[];
   linhas: L[];
@@ -113,6 +127,7 @@ export function Tabela<L>({
   ordenacaoInicial?: Ordenacao | null;
   vazio?: ReactNode;
   className?: string;
+  selecao?: SelecaoTabela<L>;
 }) {
   const [interna, setInterna] = useState<Ordenacao | null>(ordenacaoInicial);
   const controlada = ordenacao !== undefined;
@@ -143,10 +158,44 @@ export function Tabela<L>({
     });
   }, [linhas, colunas, atual]);
 
+  const chaves = ordenadas.map((l, i) => chaveLinha(l, i));
+  const marcadasVisiveis = selecao ? chaves.filter((k) => selecao.selecionadas.has(k)).length : 0;
+  const todasMarcadas = chaves.length > 0 && marcadasVisiveis === chaves.length;
+
+  function marcarTodas(marcar: boolean) {
+    if (!selecao) return;
+    const nova = new Set(selecao.selecionadas);
+    for (const k of chaves) {
+      if (marcar) nova.add(k);
+      else nova.delete(k);
+    }
+    selecao.aoMudar(nova);
+  }
+
+  function marcarLinha(chave: string, marcar: boolean) {
+    if (!selecao) return;
+    const nova = new Set(selecao.selecionadas);
+    if (marcar) nova.add(chave);
+    else nova.delete(chave);
+    selecao.aoMudar(nova);
+  }
+
+  const colunasTotais = colunas.length + (selecao ? 1 : 0);
+
   return (
     <Table className={className}>
       <TableHeader>
         <TableRow className="border-hairline-soft hover:bg-transparent">
+          {selecao && (
+            <TableHead scope="col" className="h-auto w-10 py-3 pl-5 pr-0">
+              <Checkbox
+                aria-label="Selecionar todas as linhas exibidas"
+                disabled={chaves.length === 0}
+                checked={todasMarcadas ? true : marcadasVisiveis > 0 ? "indeterminate" : false}
+                onCheckedChange={(v) => marcarTodas(v === true)}
+              />
+            </TableHead>
+          )}
           {colunas.map((c) => {
             const alinhar = alinhamentoDe(c);
             const direcao = atual?.chave === c.chave ? atual.direcao : null;
@@ -195,33 +244,51 @@ export function Tabela<L>({
       <TableBody>
         {ordenadas.length === 0 && (
           <TableRow className="hover:bg-transparent">
-            <TableCell colSpan={colunas.length} className="px-5 py-10 text-center text-mute">
+            <TableCell colSpan={colunasTotais} className="px-5 py-10 text-center text-mute">
               {mensagemVazia}
             </TableCell>
           </TableRow>
         )}
-        {ordenadas.map((linha, i) => (
-          <TableRow key={chaveLinha(linha, i)} className="border-hairline-soft hover:bg-elevated">
-            {colunas.map((c) => (
-              <TableCell
-                key={c.chave}
-                className={cn(
-                  "px-5 py-3.5 font-medium text-body",
-                  ALINHAMENTO[alinhamentoDe(c)],
-                  c.numerica && "tabular-nums",
-                  c.classe,
-                )}
-              >
-                {c.renderizar ? c.renderizar(linha) : celulaPadrao(valorBruto(linha, c.chave))}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
+        {ordenadas.map((linha, i) => {
+          const chave = chaves[i] ?? chaveLinha(linha, i);
+          const marcada = selecao?.selecionadas.has(chave) ?? false;
+          return (
+            <TableRow
+              key={chave}
+              data-state={marcada ? "selected" : undefined}
+              className="border-hairline-soft hover:bg-elevated data-[state=selected]:bg-elevated"
+            >
+              {selecao && (
+                <TableCell className="w-10 py-3.5 pl-5 pr-0">
+                  <Checkbox
+                    aria-label={`Selecionar ${selecao.rotulo(linha)}`}
+                    checked={marcada}
+                    onCheckedChange={(v) => marcarLinha(chave, v === true)}
+                  />
+                </TableCell>
+              )}
+              {colunas.map((c) => (
+                <TableCell
+                  key={c.chave}
+                  className={cn(
+                    "px-5 py-3.5 font-medium text-body",
+                    ALINHAMENTO[alinhamentoDe(c)],
+                    c.numerica && "tabular-nums",
+                    c.classe,
+                  )}
+                >
+                  {c.renderizar ? c.renderizar(linha) : celulaPadrao(valorBruto(linha, c.chave))}
+                </TableCell>
+              ))}
+            </TableRow>
+          );
+        })}
       </TableBody>
 
       {rodape && ordenadas.length > 0 && (
         <TableFooter className="border-hairline bg-transparent">
           <TableRow className="hover:bg-transparent">
+            {selecao && <TableCell className="w-10 pl-5 pr-0" />}
             {colunas.map((c) => (
               <TableCell
                 key={c.chave}

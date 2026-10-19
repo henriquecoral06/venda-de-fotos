@@ -97,6 +97,24 @@ export function useMetricasVendas() {
   });
 }
 
+/** Troca a situação de vários pedidos de uma vez; devolve quantos mudaram. */
+export function useMudarStatusPedidos() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ ids, status }: { ids: string[]; status: StatusPedido }) => {
+      const { data, error } = await supabase
+        .from("pedidos")
+        .update({ status })
+        .in("id", ids)
+        .select("id");
+      if (error) throw new Error(error.message);
+      // Fora da policy o update ignora a linha, sem erro.
+      return { feitos: data?.length ?? 0, recusados: ids.length - (data?.length ?? 0) };
+    },
+    onSettled: () => qc.invalidateQueries({ queryKey: CHAVE_PEDIDOS }),
+  });
+}
+
 export function useMudarStatusPedido() {
   const qc = useQueryClient();
   return useMutation({

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Tabela, type ColunaTabela } from "@/components/Tabela";
+import { Tabela, type ColunaTabela, type SelecaoTabela } from "@/components/Tabela";
 import { brl, dataBR } from "@/lib/format";
 import { urlPrevia } from "@/lib/fotos";
 import { ROTULO_STATUS_GALERIA, type GaleriaComContagem, type StatusGaleria } from "./api";
@@ -15,7 +15,13 @@ export const VARIANTE_STATUS_GALERIA = {
 
 const contar = (l: { count: number }[]) => l[0]?.count ?? 0;
 
-export function TabelaGalerias({ galerias }: { galerias: GaleriaComContagem[] }) {
+export function TabelaGalerias({
+  galerias,
+  selecao,
+}: {
+  galerias: GaleriaComContagem[];
+  selecao?: SelecaoTabela<GaleriaComContagem>;
+}) {
   const colunas: ColunaTabela<GaleriaComContagem>[] = [
     {
       chave: "titulo",
@@ -104,6 +110,7 @@ export function TabelaGalerias({ galerias }: { galerias: GaleriaComContagem[] })
         chaveLinha={(g) => g.id}
         ordenacaoInicial={{ chave: "data_evento", direcao: "desc" }}
         vazio="Nenhuma galeria neste filtro."
+        {...(selecao ? { selecao } : {})}
       />
     </Card>
   );
