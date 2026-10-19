@@ -7,7 +7,14 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
   {
-    ignores: ["dist", ".output", ".vinxi", "src/integrations/supabase/previewAuthStorage.ts"],
+    ignores: [
+      "dist",
+      ".output",
+      ".vinxi",
+      "src/integrations/supabase/previewAuthStorage.ts",
+      // Biblioteca de reconhecimento facial de terceiros, servida como estático.
+      "public/rostos",
+    ],
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],

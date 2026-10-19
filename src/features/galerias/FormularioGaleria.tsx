@@ -25,7 +25,27 @@ import {
   type DadosGaleria,
   type Galeria,
   type StatusGaleria,
+  type TipoGaleria,
 } from "./api";
+
+const OPCOES_TIPO = [
+  { valor: "privada", rotulo: "Cliente" },
+  { valor: "evento", rotulo: "Evento aberto" },
+] as const;
+
+const CATEGORIAS_SUGERIDAS = [
+  "Futebol",
+  "Corrida",
+  "Ciclismo",
+  "Vôlei",
+  "Basquete",
+  "Lutas",
+  "Natação",
+  "Formatura",
+  "Festa",
+  "Show",
+  "Corporativo",
+];
 
 const OPCOES_STATUS = (["rascunho", "publicada", "arquivada"] as const).map((valor) => ({
   valor,
@@ -77,6 +97,11 @@ export function FormularioGaleria({
   const [precoFoto, setPrecoFoto] = useState(mostrarPreco(galeria?.preco_foto ?? 0));
   const [vendePacote, setVendePacote] = useState(galeria ? galeria.preco_pacote !== null : false);
   const [precoPacote, setPrecoPacote] = useState(mostrarPreco(galeria?.preco_pacote));
+  const [tipo, setTipo] = useState<TipoGaleria>(galeria?.tipo ?? "privada");
+  const [categoria, setCategoria] = useState(galeria?.categoria ?? "");
+  const [local, setLocal] = useState(galeria?.local ?? "");
+  const [buscaRosto, setBuscaRosto] = useState(galeria?.busca_rosto ?? true);
+  const evento = tipo === "evento";
 
   const criar = useCriarGaleria(autoria);
   const atualizar = useAtualizarGaleria();
@@ -95,6 +120,10 @@ export function FormularioGaleria({
       senha,
       preco_foto: lerPreco(precoFoto),
       preco_pacote: vendePacote ? lerPreco(precoPacote) : null,
+      tipo,
+      categoria,
+      local,
+      busca_rosto: buscaRosto,
     };
     const aoErrar = (erro: Error) => toast.error(erro.message);
     if (galeria) {
@@ -127,9 +156,20 @@ export function FormularioGaleria({
           <DialogHeader>
             <DialogTitle>{galeria ? "Editar galeria" : "Nova galeria"}</DialogTitle>
             <DialogDescription>
-              O cliente abre a galeria pelo link. Só galerias publicadas aparecem para ele.
+              {evento
+                ? "Evento aberto: aparece na sua vitrine de eventos e qualquer pessoa acha as próprias fotos com uma selfie."
+                : "O cliente abre a galeria pelo link. Só galerias publicadas aparecem para ele."}
             </DialogDescription>
           </DialogHeader>
+
+          <Campo rotulo="Tipo">
+            <ControleSegmentado
+              opcoes={OPCOES_TIPO}
+              valor={tipo}
+              aoMudar={setTipo}
+              rotuloAria="Tipo de galeria"
+            />
+          </Campo>
 
           <Campo rotulo="Título" htmlFor="titulo-galeria">
             <Input
@@ -138,7 +178,7 @@ export function FormularioGaleria({
               minLength={2}
               maxLength={200}
               autoFocus
-              placeholder="Casamento Ana e João"
+              placeholder={evento ? "Copa Verão de Futebol 2026" : "Casamento Ana e João"}
               value={titulo}
               onChange={(e) => {
                 setTitulo(e.target.value);
@@ -165,25 +205,76 @@ export function FormularioGaleria({
             />
           </Campo>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Campo rotulo="Cliente" htmlFor="cliente-galeria">
-              <Input
-                id="cliente-galeria"
-                maxLength={120}
-                value={clienteNome}
-                onChange={(e) => setClienteNome(e.target.value)}
-              />
-            </Campo>
-            <Campo rotulo="E-mail do cliente" htmlFor="email-galeria">
-              <Input
-                id="email-galeria"
-                type="email"
-                maxLength={200}
-                value={clienteEmail}
-                onChange={(e) => setClienteEmail(e.target.value)}
-              />
-            </Campo>
-          </div>
+          {evento ? (
+            <>
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Campo
+                  rotulo="Categoria"
+                  htmlFor="categoria-galeria"
+                  dica="Agrupa os eventos na vitrine."
+                >
+                  <Input
+                    id="categoria-galeria"
+                    list="categorias-sugeridas"
+                    maxLength={60}
+                    placeholder="Futebol"
+                    value={categoria}
+                    onChange={(e) => setCategoria(e.target.value)}
+                  />
+                  <datalist id="categorias-sugeridas">
+                    {CATEGORIAS_SUGERIDAS.map((c) => (
+                      <option key={c} value={c} />
+                    ))}
+                  </datalist>
+                </Campo>
+                <Campo rotulo="Local" htmlFor="local-galeria">
+                  <Input
+                    id="local-galeria"
+                    maxLength={120}
+                    placeholder="Ginásio Municipal, Campinas"
+                    value={local}
+                    onChange={(e) => setLocal(e.target.value)}
+                  />
+                </Campo>
+              </div>
+              <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                <div className="space-y-0.5">
+                  <label htmlFor="busca-rosto-galeria" className="text-label-md text-foreground">
+                    Busca por selfie
+                  </label>
+                  <p className="text-caption text-muted-foreground">
+                    Os rostos das fotos são indexados no envio, no seu navegador. O visitante manda
+                    uma selfie e vê só as fotos em que aparece.
+                  </p>
+                </div>
+                <Switch
+                  id="busca-rosto-galeria"
+                  checked={buscaRosto}
+                  onCheckedChange={setBuscaRosto}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Campo rotulo="Cliente" htmlFor="cliente-galeria">
+                <Input
+                  id="cliente-galeria"
+                  maxLength={120}
+                  value={clienteNome}
+                  onChange={(e) => setClienteNome(e.target.value)}
+                />
+              </Campo>
+              <Campo rotulo="E-mail do cliente" htmlFor="email-galeria">
+                <Input
+                  id="email-galeria"
+                  type="email"
+                  maxLength={200}
+                  value={clienteEmail}
+                  onChange={(e) => setClienteEmail(e.target.value)}
+                />
+              </Campo>
+            </div>
+          )}
 
           <div className="grid gap-5 sm:grid-cols-2">
             <Campo rotulo="Data do evento" htmlFor="data-galeria">
@@ -197,7 +288,11 @@ export function FormularioGaleria({
             <Campo
               rotulo="Senha de acesso"
               htmlFor="senha-galeria"
-              dica="Em branco, qualquer pessoa com o link abre."
+              dica={
+                evento
+                  ? "Deixe em branco para o evento aparecer na vitrine."
+                  : "Em branco, qualquer pessoa com o link abre."
+              }
             >
               <Input
                 id="senha-galeria"
@@ -209,7 +304,10 @@ export function FormularioGaleria({
             </Campo>
           </div>
 
-          <Campo rotulo="Mensagem para o cliente" htmlFor="descricao-galeria">
+          <Campo
+            rotulo={evento ? "Descrição do evento" : "Mensagem para o cliente"}
+            htmlFor="descricao-galeria"
+          >
             <Textarea
               id="descricao-galeria"
               rows={3}

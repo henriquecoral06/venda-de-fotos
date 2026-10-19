@@ -42,9 +42,11 @@ export function TabelaGalerias({ galerias }: { galerias: GaleriaComContagem[] })
           </span>
           <span className="min-w-0">
             <span className="block truncate">{g.titulo}</span>
-            {g.cliente_nome && (
+            {(g.tipo === "evento" || g.cliente_nome) && (
               <span className="block truncate text-caption font-normal text-muted-foreground">
-                {g.cliente_nome}
+                {g.tipo === "evento"
+                  ? `Evento aberto${g.categoria ? ` · ${g.categoria}` : ""}`
+                  : g.cliente_nome}
               </span>
             )}
           </span>

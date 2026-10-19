@@ -17,9 +17,12 @@ toda mudança neste repositório.
 - `/dashboard`: vendido, a receber, galerias publicadas, fotos enviadas e os pedidos que aguardam
   pagamento.
 - `/galerias`: lista com capa, situação (rascunho, publicada, arquivada), fotos, pedidos e preço.
+  Cada galeria é de **cliente** (link e senha) ou **evento aberto** (torneio, corrida, festa), com
+  categoria, local e busca por selfie.
 - `/galerias/$id`: envio em lote (arrastar e soltar), grade de fotos, escolha da capa, exclusão,
   link para copiar e edição da galeria (título, link, cliente, data, senha, preço por foto, pacote
-  com todas as fotos, mensagem).
+  com todas as fotos, mensagem). Em evento aberto, os rostos são encontrados no envio e há o botão
+  "Procurar rostos nas fotos" para as que subiram antes.
 - `/pedidos`: pedidos dos clientes com filtro por situação, detalhe com as fotos escolhidas,
   confirmar pagamento e cancelar.
 - `/loja`: logo (PNG, JPG, WebP ou SVG; o SVG vira PNG no navegador) e cores da marca (sugeridas a
@@ -30,8 +33,11 @@ toda mudança neste repositório.
 
 **Telas do cliente** (sem conta, sempre claras)
 
+- `/eventos`: vitrine do estúdio com os eventos abertos publicados, busca por nome ou local e
+  filtro por categoria.
 - `/g/<link>`: galeria com capa, senha opcional, grade, visualização ampliada com setas do
-  teclado, seleção de fotos guardada no navegador, compra avulsa ou do pacote completo.
+  teclado, seleção de fotos guardada no navegador, compra avulsa ou do pacote completo. Em evento
+  aberto: busca por selfie (com consentimento) e pedido de remoção da foto pelo WhatsApp.
 - `/pedido/<código>`: situação do pedido, Pix para copiar, botão de WhatsApp com o comprovante e,
   depois do pagamento, os downloads dos originais (um a um ou todos).
 
@@ -45,6 +51,18 @@ toda mudança neste repositório.
   `foto_original_liberada`, que a policy do Storage usa para assinar o download só de foto que faz
   parte de pedido pago.
 - Galeria com preço zero entrega de graça: o pedido já nasce pago.
+
+## Busca por selfie
+
+- Reconhecimento facial no navegador com [face-api](https://github.com/vladmandic/face-api)
+  (MIT). A biblioteca e os modelos ficam em `public/rostos` e só são baixados por quem usa a busca
+  ou envia fotos de evento; não entram no bundle nem no Worker.
+- No envio, o painel calcula um vetor de 128 números por rosto (detector SSD, bom para multidão) e
+  grava em `rostos` (pgvector). A selfie do visitante é lida no aparelho dele (detector leve, com o
+  preciso como reserva); só o vetor vai para `buscar_fotos_por_rosto`, que não grava nada.
+- Distância menor que 0,5 conta como encontrada; entre 0,4 e 0,5 a foto aparece marcada como
+  "Talvez seja você".
+- LGPD: consentimento antes da selfie e pedido de remoção pelo WhatsApp da loja na foto ampliada.
 
 ## Como rodar
 
@@ -99,7 +117,10 @@ src/features/vitrine/    lado do cliente: galeria pública, checkout, visualizad
 src/lib/fotos.ts         buckets, URL pública, link da galeria e do pedido
 src/routes/g.$slug.tsx           galeria do cliente
 src/routes/pedido.$codigo.tsx    pedido do cliente
+src/routes/eventos.tsx           vitrine de eventos abertos
+src/lib/rostos.ts                reconhecimento facial no navegador (carrega public/rostos)
 supabase/migrations/20261014150000_venda_de_fotos.sql   tabelas, funções, Storage e reparo
+supabase/migrations/20261019120000_eventos_abertos.sql  eventos, rostos e busca por selfie
 ```
 
 ## Próximos passos
@@ -108,4 +129,6 @@ supabase/migrations/20261014150000_venda_de_fotos.sql   tabelas, funções, Stor
 - E-mail para o cliente quando o pedido é criado e quando é pago.
 - Limite de tentativas de senha e de pedidos por visitante.
 - Download em ZIP e favoritos/seleção para álbum.
+- Busca por número de camisa/peito nos eventos (marcação ou OCR no navegador).
+- Limite de buscas por selfie por visitante.
 - Domínio próprio e página de portfólio do fotógrafo.

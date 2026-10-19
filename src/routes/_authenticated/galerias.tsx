@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Plus } from "lucide-react";
+import { ExternalLink, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
@@ -54,8 +54,18 @@ function PaginaGalerias() {
     <div className="mx-auto max-w-6xl space-y-6 p-4 md:p-8">
       <PageHeader
         titulo="Galerias"
-        descricao="Cada galeria tem link próprio para o cliente escolher e comprar as fotos."
-        acoes={botaoNova}
+        descricao="Galeria de cliente (com link e senha) ou evento aberto, que aparece na sua vitrine de eventos."
+        acoes={
+          <>
+            <Button asChild variant="outline">
+              <a href="/eventos" target="_blank" rel="noreferrer">
+                <ExternalLink className="size-4" />
+                Vitrine de eventos
+              </a>
+            </Button>
+            {botaoNova}
+          </>
+        }
       />
 
       {lista.isPending ? (

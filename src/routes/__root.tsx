@@ -22,7 +22,7 @@ const DESCRICAO = BRAND.tagline;
 // Telas públicas (entrada, nova senha, galeria e pedido do cliente) são sempre
 // claras: o tema salvo só vale na área logada. Tela pública nova entra numa
 // destas listas (caminho exato ou prefixo).
-const ROTAS_SEMPRE_CLARAS = ["/", "/redefinir-senha"];
+const ROTAS_SEMPRE_CLARAS = ["/", "/redefinir-senha", "/eventos"];
 const PREFIXOS_SEMPRE_CLAROS = ["/g/", "/pedido/"];
 
 function ehSempreClara(pathname: string): boolean {

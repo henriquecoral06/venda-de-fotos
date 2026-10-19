@@ -85,6 +85,7 @@ begin
      or has_table_privilege('anon', 'public.fotos', 'SELECT')
      or has_table_privilege('anon', 'public.pedidos', 'SELECT')
      or has_table_privilege('anon', 'public.configuracoes_loja', 'SELECT')
+     or has_table_privilege('anon', 'public.rostos', 'SELECT')
      or has_table_privilege('anon', 'public.organizacoes', 'SELECT') then
     raise exception 'REPARO FALHOU: anon continua lendo tabelas';
   end if;
@@ -94,7 +95,8 @@ begin
      or has_table_privilege('authenticated', 'public.pedidos', 'INSERT')
      or has_table_privilege('authenticated', 'public.pedidos', 'DELETE')
      or has_table_privilege('authenticated', 'public.pedido_itens', 'INSERT')
-     or has_table_privilege('authenticated', 'public.configuracoes_loja', 'INSERT') then
+     or has_table_privilege('authenticated', 'public.configuracoes_loja', 'INSERT')
+     or has_table_privilege('authenticated', 'public.rostos', 'UPDATE') then
     raise exception 'REPARO FALHOU: authenticated continua escrevendo onde não deve';
   end if;
   if has_column_privilege('authenticated', 'public.perfis', 'email', 'UPDATE') then
@@ -120,7 +122,9 @@ begin
           and has_table_privilege('authenticated', 'public.pedido_itens', 'SELECT')
           and has_column_privilege('authenticated', 'public.configuracoes_loja', 'chave_pix', 'UPDATE')
           and has_column_privilege('authenticated', 'public.configuracoes_loja', 'cor_primaria', 'UPDATE')
-          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'logo_caminho', 'UPDATE')) then
+          and has_column_privilege('authenticated', 'public.configuracoes_loja', 'logo_caminho', 'UPDATE')
+          and has_table_privilege('authenticated', 'public.rostos', 'INSERT')
+          and has_table_privilege('authenticated', 'public.rostos', 'DELETE')) then
     raise exception 'REPARO FALHOU: authenticated perdeu privilégio nas tabelas da venda';
   end if;
   if not has_table_privilege('service_role', 'public.organizacao_membros', 'INSERT') then
@@ -149,7 +153,9 @@ begin
   if not (has_function_privilege('anon', 'public.galeria_publica(text, text)', 'EXECUTE')
           and has_function_privilege('anon', 'public.criar_pedido(text, text, text, text, text, uuid[], boolean)', 'EXECUTE')
           and has_function_privilege('anon', 'public.pedido_publico(text)', 'EXECUTE')
-          and has_function_privilege('anon', 'public.foto_original_liberada(text)', 'EXECUTE')) then
+          and has_function_privilege('anon', 'public.foto_original_liberada(text)', 'EXECUTE')
+          and has_function_privilege('anon', 'public.eventos_publicos()', 'EXECUTE')
+          and has_function_privilege('anon', 'public.buscar_fotos_por_rosto(text, text, real[])', 'EXECUTE')) then
     raise exception 'REPARO FALHOU: funções públicas da venda fechadas para o visitante';
   end if;
 
