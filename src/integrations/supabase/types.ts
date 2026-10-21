@@ -216,6 +216,116 @@ export type Database = {
           },
         ]
       }
+      landing_pages: {
+        Row: {
+          codigo_body: string
+          codigo_head: string
+          conteudo: Json
+          cores: Json
+          created_at: string
+          ga4_id: string
+          google_ads_id: string
+          gtm_id: string
+          id: string
+          meta_capi_ativa: boolean
+          meta_pixel_id: string
+          meta_test_event_code: string
+          modelo: string
+          organizacao_id: string | null
+          publicada: boolean
+          slug: string
+          tiktok_pixel_id: string
+          titulo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          codigo_body?: string
+          codigo_head?: string
+          conteudo?: Json
+          cores?: Json
+          created_at?: string
+          ga4_id?: string
+          google_ads_id?: string
+          gtm_id?: string
+          id?: string
+          meta_capi_ativa?: boolean
+          meta_pixel_id?: string
+          meta_test_event_code?: string
+          modelo: string
+          organizacao_id?: string | null
+          publicada?: boolean
+          slug: string
+          tiktok_pixel_id?: string
+          titulo: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          codigo_body?: string
+          codigo_head?: string
+          conteudo?: Json
+          cores?: Json
+          created_at?: string
+          ga4_id?: string
+          google_ads_id?: string
+          gtm_id?: string
+          id?: string
+          meta_capi_ativa?: boolean
+          meta_pixel_id?: string
+          meta_test_event_code?: string
+          modelo?: string
+          organizacao_id?: string | null
+          publicada?: boolean
+          slug?: string
+          tiktok_pixel_id?: string
+          titulo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_pages_organizacao_id_fkey"
+            columns: ["organizacao_id"]
+            isOneToOne: false
+            referencedRelation: "organizacoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "landing_pages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_segredos: {
+        Row: {
+          landing_id: string
+          meta_capi_token: string
+          updated_at: string
+        }
+        Insert: {
+          landing_id: string
+          meta_capi_token?: string
+          updated_at?: string
+        }
+        Update: {
+          landing_id?: string
+          meta_capi_token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_segredos_landing_id_fkey"
+            columns: ["landing_id"]
+            isOneToOne: true
+            referencedRelation: "landing_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacao_membros: {
         Row: {
           created_at: string
@@ -488,11 +598,27 @@ export type Database = {
         Returns: string
       }
       definir_cadastro_aberto: { Args: { _aberto: boolean }; Returns: boolean }
+      definir_token_capi: { Args: { _landing: string; _token: string }; Returns: undefined }
+      enviar_evento_meta: {
+        Args: {
+          _event_id: string
+          _evento: string
+          _fbc: string
+          _fbp: string
+          _ip: string
+          _slug: string
+          _url: string
+          _user_agent: string
+        }
+        Returns: boolean
+      }
       eventos_publicos: { Args: Record<PropertyKey, never>; Returns: Json }
       foto_original_liberada: { Args: { _caminho: string }; Returns: boolean }
       galeria_publica: { Args: { _senha?: string; _slug: string }; Returns: Json }
       garantir_instalacao: { Args: Record<PropertyKey, never>; Returns: boolean }
       garantir_organizacao: { Args: Record<PropertyKey, never>; Returns: boolean }
+      landing_publica: { Args: { _slug: string }; Returns: Json }
+      landing_tem_token_capi: { Args: { _landing: string }; Returns: boolean }
       mesma_organizacao: { Args: { _user: string }; Returns: boolean }
       meu_papel: {
         Args: Record<PropertyKey, never>

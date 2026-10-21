@@ -17,12 +17,15 @@ import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEquipeRouteImport } from './routes/_authenticated/equipe'
 import { Route as AuthenticatedGaleriasRouteImport } from './routes/_authenticated/galerias'
+import { Route as AuthenticatedLandingPagesRouteImport } from './routes/_authenticated/landing-pages'
 import { Route as AuthenticatedLojaRouteImport } from './routes/_authenticated/loja'
 import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
 import { Route as GSlugRouteImport } from './routes/g.$slug'
+import { Route as LSlugRouteImport } from './routes/l.$slug'
 import { Route as PedidoCodigoRouteImport } from './routes/pedido.$codigo'
 import { Route as AuthenticatedGaleriasIdRouteImport } from './routes/_authenticated/galerias_.$id'
+import { Route as AuthenticatedLandingPagesIdRouteImport } from './routes/_authenticated/landing-pages_.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -63,6 +66,12 @@ const AuthenticatedGaleriasRoute = AuthenticatedGaleriasRouteImport.update({
   path: '/galerias',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLandingPagesRoute =
+  AuthenticatedLandingPagesRouteImport.update({
+    id: '/landing-pages',
+    path: '/landing-pages',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLojaRoute = AuthenticatedLojaRouteImport.update({
   id: '/loja',
   path: '/loja',
@@ -83,6 +92,11 @@ const GSlugRoute = GSlugRouteImport.update({
   path: '/g/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LSlugRoute = LSlugRouteImport.update({
+  id: '/l/$slug',
+  path: '/l/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PedidoCodigoRoute = PedidoCodigoRouteImport.update({
   id: '/pedido/$codigo',
   path: '/pedido/$codigo',
@@ -93,6 +107,12 @@ const AuthenticatedGaleriasIdRoute = AuthenticatedGaleriasIdRouteImport.update({
   path: '/galerias/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLandingPagesIdRoute =
+  AuthenticatedLandingPagesIdRouteImport.update({
+    id: '/landing-pages_/$id',
+    path: '/landing-pages/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -102,12 +122,15 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/galerias': typeof AuthenticatedGaleriasRoute
+  '/landing-pages': typeof AuthenticatedLandingPagesRoute
   '/loja': typeof AuthenticatedLojaRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/g/$slug': typeof GSlugRoute
+  '/l/$slug': typeof LSlugRoute
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/galerias/$id': typeof AuthenticatedGaleriasIdRoute
+  '/landing-pages/$id': typeof AuthenticatedLandingPagesIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,12 +140,15 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/equipe': typeof AuthenticatedEquipeRoute
   '/galerias': typeof AuthenticatedGaleriasRoute
+  '/landing-pages': typeof AuthenticatedLandingPagesRoute
   '/loja': typeof AuthenticatedLojaRoute
   '/pedidos': typeof AuthenticatedPedidosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
   '/g/$slug': typeof GSlugRoute
+  '/l/$slug': typeof LSlugRoute
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/galerias/$id': typeof AuthenticatedGaleriasIdRoute
+  '/landing-pages/$id': typeof AuthenticatedLandingPagesIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,12 +160,15 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/equipe': typeof AuthenticatedEquipeRoute
   '/_authenticated/galerias': typeof AuthenticatedGaleriasRoute
+  '/_authenticated/landing-pages': typeof AuthenticatedLandingPagesRoute
   '/_authenticated/loja': typeof AuthenticatedLojaRoute
   '/_authenticated/pedidos': typeof AuthenticatedPedidosRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/g/$slug': typeof GSlugRoute
+  '/l/$slug': typeof LSlugRoute
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/_authenticated/galerias_/$id': typeof AuthenticatedGaleriasIdRoute
+  '/_authenticated/landing-pages_/$id': typeof AuthenticatedLandingPagesIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -151,12 +180,15 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/equipe'
     | '/galerias'
+    | '/landing-pages'
     | '/loja'
     | '/pedidos'
     | '/perfil'
     | '/g/$slug'
+    | '/l/$slug'
     | '/pedido/$codigo'
     | '/galerias/$id'
+    | '/landing-pages/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -166,12 +198,15 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/equipe'
     | '/galerias'
+    | '/landing-pages'
     | '/loja'
     | '/pedidos'
     | '/perfil'
     | '/g/$slug'
+    | '/l/$slug'
     | '/pedido/$codigo'
     | '/galerias/$id'
+    | '/landing-pages/$id'
   id:
     | '__root__'
     | '/'
@@ -182,12 +217,15 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/equipe'
     | '/_authenticated/galerias'
+    | '/_authenticated/landing-pages'
     | '/_authenticated/loja'
     | '/_authenticated/pedidos'
     | '/_authenticated/perfil'
     | '/g/$slug'
+    | '/l/$slug'
     | '/pedido/$codigo'
     | '/_authenticated/galerias_/$id'
+    | '/_authenticated/landing-pages_/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -197,6 +235,7 @@ export interface RootRouteChildren {
   EventosRoute: typeof EventosRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   GSlugRoute: typeof GSlugRoute
+  LSlugRoute: typeof LSlugRoute
   PedidoCodigoRoute: typeof PedidoCodigoRoute
 }
 
@@ -258,6 +297,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGaleriasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/landing-pages': {
+      id: '/_authenticated/landing-pages'
+      path: '/landing-pages'
+      fullPath: '/landing-pages'
+      preLoaderRoute: typeof AuthenticatedLandingPagesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/loja': {
       id: '/_authenticated/loja'
       path: '/loja'
@@ -286,6 +332,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/l/$slug': {
+      id: '/l/$slug'
+      path: '/l/$slug'
+      fullPath: '/l/$slug'
+      preLoaderRoute: typeof LSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pedido/$codigo': {
       id: '/pedido/$codigo'
       path: '/pedido/$codigo'
@@ -300,6 +353,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedGaleriasIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/landing-pages_/$id': {
+      id: '/_authenticated/landing-pages_/$id'
+      path: '/landing-pages/$id'
+      fullPath: '/landing-pages/$id'
+      preLoaderRoute: typeof AuthenticatedLandingPagesIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -307,20 +367,24 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEquipeRoute: typeof AuthenticatedEquipeRoute
   AuthenticatedGaleriasRoute: typeof AuthenticatedGaleriasRoute
+  AuthenticatedLandingPagesRoute: typeof AuthenticatedLandingPagesRoute
   AuthenticatedLojaRoute: typeof AuthenticatedLojaRoute
   AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedGaleriasIdRoute: typeof AuthenticatedGaleriasIdRoute
+  AuthenticatedLandingPagesIdRoute: typeof AuthenticatedLandingPagesIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEquipeRoute: AuthenticatedEquipeRoute,
   AuthenticatedGaleriasRoute: AuthenticatedGaleriasRoute,
+  AuthenticatedLandingPagesRoute: AuthenticatedLandingPagesRoute,
   AuthenticatedLojaRoute: AuthenticatedLojaRoute,
   AuthenticatedPedidosRoute: AuthenticatedPedidosRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedGaleriasIdRoute: AuthenticatedGaleriasIdRoute,
+  AuthenticatedLandingPagesIdRoute: AuthenticatedLandingPagesIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -333,6 +397,7 @@ const rootRouteChildren: RootRouteChildren = {
   EventosRoute: EventosRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   GSlugRoute: GSlugRoute,
+  LSlugRoute: LSlugRoute,
   PedidoCodigoRoute: PedidoCodigoRoute,
 }
 export const routeTree = rootRouteImport

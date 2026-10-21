@@ -1,4 +1,13 @@
-import { Home, Images, Receipt, Store, UserCircle, Users, type LucideIcon } from "lucide-react";
+import {
+  Home,
+  Images,
+  LayoutTemplate,
+  Receipt,
+  Store,
+  UserCircle,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 
 /**
  * Menu lateral e trilha de navegação saem desta única estrutura. Tela nova da
@@ -7,10 +16,10 @@ import { Home, Images, Receipt, Store, UserCircle, Users, type LucideIcon } from
 
 /** Rotas fixas da área logada: as únicas que viram link (menu e trilha). */
 export type RotaNavEstatica =
-  "/dashboard" | "/galerias" | "/pedidos" | "/loja" | "/equipe" | "/perfil";
+  "/dashboard" | "/galerias" | "/pedidos" | "/landing-pages" | "/loja" | "/equipe" | "/perfil";
 
 /** Rotas com id no caminho: só aparecem na trilha, e nunca como link. */
-export type RotaNavDinamica = "/galerias/$id";
+export type RotaNavDinamica = "/galerias/$id" | "/landing-pages/$id";
 
 /** Rotas da área logada que aparecem no menu ou na trilha. */
 export type RotaNav = RotaNavEstatica | RotaNavDinamica;
@@ -38,6 +47,8 @@ export const NAV: EntradaNav[] = [
   { href: "/galerias", rotulo: "Galerias", icone: Images, grupo: "Vendas" },
   { href: "/galerias/$id", rotulo: "Galeria", pai: "/galerias", soTrilha: true },
   { href: "/pedidos", rotulo: "Pedidos", icone: Receipt, grupo: "Vendas" },
+  { href: "/landing-pages", rotulo: "Landing pages", icone: LayoutTemplate, grupo: "Vendas" },
+  { href: "/landing-pages/$id", rotulo: "Landing page", pai: "/landing-pages", soTrilha: true },
   { href: "/loja", rotulo: "Loja e pagamento", icone: Store, grupo: "Vendas" },
 
   { href: "/equipe", rotulo: "Equipe", icone: Users, grupo: "Conta" },

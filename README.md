@@ -29,6 +29,10 @@ toda mudança neste repositório.
   partir da logo), nome exibido ao cliente, texto da
   marca d'água, chave Pix, WhatsApp para comprovantes e instruções de pagamento (só o dono edita).
   A logo e as cores aparecem na galeria e no pedido do cliente.
+- `/landing-pages`: páginas para anúncios em quatro modelos (Editorial, Portfólio, Estúdio e
+  Clássico), com textos, fotos e cores editáveis e prévia ao vivo. Cada uma instala Meta Pixel,
+  GA4, Google Ads, Google Tag Manager, TikTok Pixel, código próprio e a API de Conversões da Meta,
+  e todas mostram os eventos da vitrine.
 - `/equipe` e `/perfil`, do template.
 
 **Telas do cliente** (sem conta, sempre claras)
@@ -38,6 +42,7 @@ toda mudança neste repositório.
 - `/g/<link>`: galeria com capa, senha opcional, grade, visualização ampliada com setas do
   teclado, seleção de fotos guardada no navegador, compra avulsa ou do pacote completo. Em evento
   aberto: busca por selfie (com consentimento) e pedido de remoção da foto pelo WhatsApp.
+- `/l/<link>`: landing page publicada, com os pixels e as tags do fotógrafo.
 - `/pedido/<código>`: situação do pedido, Pix para copiar, botão de WhatsApp com o comprovante e,
   depois do pagamento, os downloads dos originais (um a um ou todos).
 
@@ -107,6 +112,18 @@ Para ligar o repositório a um Worker (Workers & Pages → Create → Import a r
 | `npm run lint`      | ESLint (o esperado é 0 erros)             |
 | `npm run format`    | Prettier em todo o repositório            |
 
+## Landing pages e rastreamento
+
+- Os modelos são originais, inspirados no estilo de sites de fotógrafos; as cores ficam em
+  variáveis `--lp-*` da própria página, fora do design system do painel.
+- Pixels e tags são instalados no navegador do visitante com o código oficial de cada plataforma,
+  depois de validar o formato do ID. O botão de contato dispara `Contact` e o clique num evento
+  dispara `ViewContent`, além do `PageView`.
+- API de Conversões da Meta: o token fica em `landing_segredos`, que nenhum cliente lê. O navegador
+  chama uma server function que junta IP e user agent e chama `enviar_evento_meta`, que envia para a
+  Meta pelo `pg_net`. Pixel e API usam o mesmo `event_id`, então a Meta não conta em dobro. Use o
+  "código de teste" do Gerenciador de Eventos para conferir antes de rodar anúncios.
+
 ## Estrutura da solução
 
 ```
@@ -114,13 +131,16 @@ src/features/galerias/   galerias e fotos: api, formulário, envio, grade, marca
 src/features/pedidos/    pedidos do painel: api, tabela, detalhe
 src/features/loja/       configurações da loja (linha única)
 src/features/vitrine/    lado do cliente: galeria pública, checkout, visualizador
+src/features/landing/    landing pages: modelos, editor, rastreamento e API de Conversões
 src/lib/fotos.ts         buckets, URL pública, link da galeria e do pedido
 src/routes/g.$slug.tsx           galeria do cliente
 src/routes/pedido.$codigo.tsx    pedido do cliente
 src/routes/eventos.tsx           vitrine de eventos abertos
+src/routes/l.$slug.tsx           landing page pública
 src/lib/rostos.ts                reconhecimento facial no navegador (carrega public/rostos)
 supabase/migrations/20261014150000_venda_de_fotos.sql   tabelas, funções, Storage e reparo
 supabase/migrations/20261019120000_eventos_abertos.sql  eventos, rostos e busca por selfie
+supabase/migrations/20261021120000_landing_pages.sql    landing pages, segredos e API de Conversões
 ```
 
 ## Próximos passos

@@ -23,7 +23,7 @@ const DESCRICAO = BRAND.tagline;
 // claras: o tema salvo só vale na área logada. Tela pública nova entra numa
 // destas listas (caminho exato ou prefixo).
 const ROTAS_SEMPRE_CLARAS = ["/", "/redefinir-senha", "/eventos"];
-const PREFIXOS_SEMPRE_CLAROS = ["/g/", "/pedido/"];
+const PREFIXOS_SEMPRE_CLAROS = ["/g/", "/pedido/", "/l/"];
 
 function ehSempreClara(pathname: string): boolean {
   return (
