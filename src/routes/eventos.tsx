@@ -63,12 +63,11 @@ function PaginaEventos() {
 
   return (
     <LayoutPublico fotografo={fotografo} marca={vitrine.data?.marca}>
-      <section className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl space-y-2 p-4 py-10 md:p-8 md:py-14">
-          <p className="text-eyebrow uppercase tracking-eyebrow text-muted-foreground">
-            {fotografo || "Fotos de eventos"}
-          </p>
-          <h1 className="text-heading-xl md:text-display-lg">Encontre as suas fotos</h1>
+      <section>
+        <div className="mx-auto max-w-[96rem] space-y-3 px-4 py-12 md:px-8 md:py-20">
+          <h1 className="text-heading-xl font-light md:text-display-xl md:font-light">
+            Encontre as suas fotos
+          </h1>
           <p className="max-w-2xl text-body-md text-muted-foreground">
             Escolha o evento em que você esteve. Nos eventos com busca por selfie, mande uma foto do
             seu rosto e veja só as fotos em que você aparece.
@@ -76,7 +75,7 @@ function PaginaEventos() {
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
+      <div className="mx-auto max-w-[96rem] space-y-6 px-4 pb-16 md:px-8">
         {vitrine.isPending ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }, (_, i) => (

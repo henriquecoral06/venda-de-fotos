@@ -32,7 +32,7 @@ export function TabelaGalerias({
       chave: "titulo",
       titulo: "Galeria",
       ordenavel: true,
-      classe: "max-w-[18rem] sm:max-w-md",
+      classe: "max-w-[13rem] sm:max-w-md",
       renderizar: (g) => (
         <Link
           to="/galerias/$id"

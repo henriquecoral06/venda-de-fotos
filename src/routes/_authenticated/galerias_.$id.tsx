@@ -1,6 +1,15 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Copy, ExternalLink, Loader2, Lock, Pencil, Trash2 } from "lucide-react";
+import {
+  Copy,
+  Download,
+  ExternalLink,
+  Loader2,
+  Lock,
+  Pencil,
+  RefreshCw,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonCabecalho, SkeletonLista } from "@/components/Skeletons";
 import { usePerfil } from "@/features/perfil/api";
@@ -25,6 +35,7 @@ import {
   useExcluirGaleria,
   useFotos,
   useGaleria,
+  useGerarNovoLink,
   type Autoria,
   type Foto,
 } from "@/features/galerias/api";
@@ -55,6 +66,8 @@ function PaginaGaleria() {
   const [editando, setEditando] = useState<number | null>(null);
   const [fotoParaExcluir, setFotoParaExcluir] = useState<Foto | null>(null);
   const [excluindoGaleria, setExcluindoGaleria] = useState(false);
+  const [trocandoLink, setTrocandoLink] = useState(false);
+  const novoLink = useGerarNovoLink();
 
   const autoria: Autoria = {
     userId: ctx?.perfil?.id ?? "",
@@ -151,10 +164,6 @@ function PaginaGaleria() {
               <Pencil className="size-4" />
               Editar
             </Button>
-            <Button variant="outline" onClick={() => void copiarLink()}>
-              <Copy className="size-4" />
-              Copiar link
-            </Button>
             {g.status === "publicada" && (
               <Button asChild>
                 <a href={enderecoGaleria(g)} target="_blank" rel="noreferrer">
@@ -178,10 +187,40 @@ function PaginaGaleria() {
             Senha: {g.senha}
           </Badge>
         )}
-        <span className="text-caption text-muted-foreground">
-          {rotuloFotos(lista.length)} · {enderecoGaleria(g)}
-        </span>
+        {g.download_liberado && (
+          <Badge variant="info" className="gap-1">
+            <Download className="size-3" aria-hidden="true" />
+            Download liberado
+          </Badge>
+        )}
+        <span className="text-caption text-muted-foreground">{rotuloFotos(lista.length)}</span>
       </div>
+
+      <Card className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-label-md text-foreground">Link para o cliente</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {typeof window === "undefined" ? enderecoGaleria(g) : linkGaleria(g)}
+          </p>
+          <p className="text-caption text-muted-foreground">
+            {evento && !g.senha
+              ? "Evento sem senha: o link usa o nome do evento e aparece na vitrine."
+              : "O código no fim do link é secreto: sem ele, ninguém acha a galeria."}
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => void copiarLink()}>
+            <Copy className="size-4" />
+            Copiar
+          </Button>
+          {!(evento && !g.senha) && (
+            <Button size="sm" variant="ghost" onClick={() => setTrocandoLink(true)}>
+              <RefreshCw className="size-4" />
+              Gerar novo link
+            </Button>
+          )}
+        </div>
+      </Card>
 
       {g.status !== "publicada" && (
         <Card className="bg-warning-soft p-4 text-sm text-warning">
@@ -254,6 +293,24 @@ function PaginaGaleria() {
           autoria={autoria}
         />
       )}
+
+      <ConfirmarAcao
+        aberto={trocandoLink}
+        titulo="Gerar um link novo?"
+        descricao="O link atual para de abrir na hora. Use quando o link vazou para quem não devia. Depois, mande o novo para o cliente."
+        rotuloConfirmar="Gerar novo link"
+        carregando={novoLink.isPending}
+        aoConfirmar={() =>
+          novoLink.mutate(g.id, {
+            onSuccess: () => {
+              toast.success("Link novo gerado. O antigo não abre mais.");
+              setTrocandoLink(false);
+            },
+            onError: (e: Error) => toast.error(e.message),
+          })
+        }
+        aoFechar={() => setTrocandoLink(false)}
+      />
 
       <AlertDialog
         open={fotoParaExcluir !== null}

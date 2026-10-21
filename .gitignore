@@ -43,3 +43,6 @@ supabase/config.toml
 supabase/.gitignore
 supabase/.temp/
 supabase/.branches/
+
+# Capturas de tela dos diagnósticos (pesadas; ficam só na máquina)
+docs/diagnostico-*/capturas*/

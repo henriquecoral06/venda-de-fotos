@@ -683,6 +683,20 @@ begin
   exception when insufficient_privilege then null;
   end;
 
+  -- 31. original pago: o Storage assina o link, mas listar a pasta não o mostra
+  perform set_config('role', 'none', true);
+  insert into storage.objects (bucket_id, name) values ('originais', org_id || '/rls/a.jpg');
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  perform set_config('storage.operation', 'storage.object.sign', true);
+  select count(*) into n from storage.objects where bucket_id = 'originais' and name = org_id || '/rls/a.jpg';
+  if n <> 1 then raise exception 'RLS FALHOU: comprador não consegue assinar o original pago'; end if;
+  perform set_config('storage.operation', 'storage.object.list', true);
+  select count(*) into n from storage.objects where bucket_id = 'originais';
+  if n <> 0 then raise exception 'RLS FALHOU: visitante listou % original(is)', n; end if;
+  perform set_config('storage.operation', '', true);
+  perform set_config('role', 'none', true);
+
   -- ── reparo na instalação vazia ──────────────────────────────────────────
   -- 20. sem organização nenhuma, garantir_organizacao cria e faz dono
   perform set_config('role', 'none', true);

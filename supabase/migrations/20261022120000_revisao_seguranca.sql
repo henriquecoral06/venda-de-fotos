@@ -13,6 +13,7 @@
 -- 4. Download liberado pelo fotógrafo (`download_liberado`): a galeria inteira
 --    sai em alta resolução, sem pedido, para quem abre o link.
 -- 5. Marca d'água opcional nas prévias (`marca_dagua_ativa` na loja).
+-- 6. Original do comprador: o Storage só assina o link, não lista a pasta.
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -437,6 +438,21 @@ set search_path = public as $$
 $$;
 revoke execute on function public.foto_original_liberada(text) from anon, authenticated, public;
 grant execute on function public.foto_original_liberada(text) to anon, authenticated;
+
+-- O comprador (e quem abre galeria com download liberado) só assina o link do
+-- original. Sem o filtro da operação, a mesma permissão deixava listar a pasta
+-- da organização (o id dela aparece no endereço das prévias) e descobrir os
+-- originais já vendidos. Operação desconhecida (nula) não passa.
+drop policy if exists originais_select_comprador on storage.objects;
+create policy originais_select_comprador on storage.objects
+  for select to anon, authenticated
+  using (
+    bucket_id = 'originais'
+    and coalesce(storage.operation(), '') in (
+      'storage.object.sign', 'storage.object.sign_many', 'storage.object.get_authenticated'
+    )
+    and public.foto_original_liberada(name)
+  );
 
 -- ---------------------------------------------------------------------------
 -- 5. Auto-reparo com os objetos novos

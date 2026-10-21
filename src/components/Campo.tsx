@@ -4,13 +4,10 @@ import type { ReactNode } from "react";
 export const CLASSE_ROTULO =
   "block text-xs font-medium text-muted-foreground [text-transform:var(--ds-label-transform)] [letter-spacing:var(--ds-label-tracking)]";
 
-/** Id da mensagem de erro do campo, para o `aria-describedby` do controle. */
-export const idErro = (htmlFor: string) => `${htmlFor}-erro`;
-
 /**
  * Rótulo + campo, com dica opcional embaixo. Com `erro`, a mensagem toma o
- * lugar da dica; o controle aponta para ela com `aria-describedby={idErro(id)}`
- * e `aria-invalid`.
+ * lugar da dica; o controle aponta para ela com `ariaErro(id, erro)`
+ * (`src/lib/validacao.ts`).
  */
 export function Campo({
   rotulo,
@@ -37,7 +34,7 @@ export function Campo({
       {children}
       {erro ? (
         <p
-          id={htmlFor ? idErro(htmlFor) : undefined}
+          id={htmlFor ? `${htmlFor}-erro` : undefined}
           className="text-caption text-danger"
           role="alert"
         >
