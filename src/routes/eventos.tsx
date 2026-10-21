@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ImageIcon, MapPin, ScanFace, Search } from "lucide-react";
+import { CalendarDays, ImageIcon, MapPin, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,8 +69,7 @@ function PaginaEventos() {
             Encontre as suas fotos
           </h1>
           <p className="max-w-2xl text-body-md text-muted-foreground">
-            Escolha o evento em que você esteve. Nos eventos com busca por selfie, mande uma foto do
-            seu rosto e veja só as fotos em que você aparece.
+            Escolha o evento em que você esteve, ache as suas fotos e compre direto por aqui.
           </p>
         </div>
       </section>
@@ -188,12 +187,6 @@ function CartaoEvento({ evento }: { evento: EventoPublico }) {
               {rotuloFotos(evento.total_fotos)} ·{" "}
               {evento.preco_foto > 0 ? `${brl(evento.preco_foto)} cada` : "grátis"}
             </span>
-            {evento.busca_rosto && (
-              <Badge variant="info" className="gap-1">
-                <ScanFace className="size-3" aria-hidden="true" />
-                Busca por selfie
-              </Badge>
-            )}
           </div>
         </div>
       </Card>

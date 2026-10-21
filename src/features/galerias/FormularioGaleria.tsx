@@ -124,7 +124,6 @@ export function FormularioGaleria({
   const [tipo, setTipo] = useState<TipoGaleria>(galeria?.tipo ?? "privada");
   const [categoria, setCategoria] = useState(galeria?.categoria ?? "");
   const [local, setLocal] = useState(galeria?.local ?? "");
-  const [buscaRosto, setBuscaRosto] = useState(galeria?.busca_rosto ?? true);
   const [downloadLiberado, setDownloadLiberado] = useState(galeria?.download_liberado ?? false);
   const [sufixo] = useState(sufixoAleatorio);
   const [erros, setErros] = useState<ErrosDeCampo<DadosGaleria>>({});
@@ -154,7 +153,6 @@ export function FormularioGaleria({
       tipo,
       categoria,
       local,
-      busca_rosto: buscaRosto,
       download_liberado: downloadLiberado,
     };
     const conferido = esquemaGaleria.safeParse(dados);
@@ -204,7 +202,7 @@ export function FormularioGaleria({
             <DialogTitle>{galeria ? "Editar galeria" : "Nova galeria"}</DialogTitle>
             <DialogDescription>
               {evento
-                ? "Evento aberto: aparece na sua vitrine de eventos e qualquer pessoa acha as próprias fotos com uma selfie."
+                ? "Evento aberto: aparece na sua vitrine de eventos para quem esteve lá achar e comprar as próprias fotos."
                 : "O cliente abre a galeria pelo link. Só galerias publicadas aparecem para ele."}
             </DialogDescription>
           </DialogHeader>
@@ -285,22 +283,6 @@ export function FormularioGaleria({
                       onChange={(e) => setLocal(e.target.value)}
                     />
                   </Campo>
-                </div>
-                <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
-                  <div className="space-y-0.5">
-                    <label htmlFor="busca-rosto-galeria" className="text-label-md text-foreground">
-                      Busca por selfie
-                    </label>
-                    <p className="text-caption text-muted-foreground">
-                      Os rostos das fotos são indexados no envio, no seu navegador. O visitante
-                      manda uma selfie e vê só as fotos em que aparece.
-                    </p>
-                  </div>
-                  <Switch
-                    id="busca-rosto-galeria"
-                    checked={buscaRosto}
-                    onCheckedChange={setBuscaRosto}
-                  />
                 </div>
               </>
             ) : (

@@ -39,7 +39,6 @@ import {
   type Autoria,
   type Foto,
 } from "@/features/galerias/api";
-import { CartaoRostos } from "@/features/galerias/CartaoRostos";
 import { EnvioFotos } from "@/features/galerias/EnvioFotos";
 import { FormularioGaleria } from "@/features/galerias/FormularioGaleria";
 import { GradeFotos } from "@/features/galerias/GradeFotos";
@@ -142,7 +141,6 @@ function PaginaGaleria() {
   }
 
   const evento = g.tipo === "evento";
-  const indexarRostos = evento && g.busca_rosto;
   const resumo = [
     evento ? [g.categoria, g.local].filter(Boolean).join(", ") || "Evento aberto" : null,
     evento ? null : g.cliente_nome || null,
@@ -236,14 +234,11 @@ function PaginaGaleria() {
         </Card>
       )}
 
-      {indexarRostos && <CartaoRostos galeriaId={g.id} autoria={autoria} />}
-
       <EnvioFotos
         galeriaId={g.id}
         autoria={autoria}
         marca={marca}
         proximaOrdem={proximaOrdem}
-        indexarRostos={indexarRostos}
         existentes={lista}
       />
 

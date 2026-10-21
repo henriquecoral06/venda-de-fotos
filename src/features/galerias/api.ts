@@ -3,7 +3,6 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Enums, Tables } from "@/integrations/supabase/types";
 import { BUCKET_ORIGINAIS, BUCKET_PREVIAS } from "@/lib/fotos";
-import { canvasParaAnalise, rostosDaImagem, vetorParaBanco } from "@/lib/rostos";
 import { extensaoDaPrevia, extensaoDe, processarFoto } from "./imagens";
 
 export type Galeria = Tables<"galerias">;
@@ -61,7 +60,6 @@ export const esquemaGaleria = z.object({
   tipo: z.enum(["privada", "evento"]),
   categoria: z.string().trim().max(60, "A categoria pode ter no máximo 60 caracteres."),
   local: z.string().trim().max(120, "O local pode ter no máximo 120 caracteres."),
-  busca_rosto: z.boolean(),
   download_liberado: z.boolean(),
 });
 
@@ -88,7 +86,6 @@ function paraBanco(d: DadosGaleria) {
     tipo: d.tipo,
     categoria: d.tipo === "evento" ? d.categoria : "",
     local: d.local,
-    busca_rosto: d.busca_rosto,
     download_liberado: d.download_liberado,
   };
 }
@@ -362,7 +359,6 @@ export async function enviarFoto({
   autoria,
   marca,
   ordem,
-  indexarRostos,
 }: {
   arquivo: File;
   galeria: Pick<Galeria, "id">;
@@ -370,14 +366,8 @@ export async function enviarFoto({
   /** Texto da marca d'água; nulo = prévia sem marca. */
   marca: string | null;
   ordem: number;
-  /** Galeria de evento com busca por selfie: grava os rostos da foto. */
-  indexarRostos: boolean;
-}): Promise<number> {
-  const { previa, miniatura, largura, altura, rostos } = await processarFoto(
-    arquivo,
-    marca,
-    indexarRostos,
-  );
+}): Promise<void> {
+  const { previa, miniatura, largura, altura } = await processarFoto(arquivo, marca);
 
   // A primeira pasta decide quem envia e apaga (policies do Storage).
   const pasta = `${autoria.organizacaoId ?? autoria.userId}/${galeria.id}`;
@@ -407,135 +397,19 @@ export async function enviarFoto({
     throw new Error(`${arquivo.name}: ${falha.error.message}`);
   }
 
-  const { data: foto, error } = await supabase
-    .from("fotos")
-    .insert({
-      galeria_id: galeria.id,
-      user_id: autoria.userId,
-      organizacao_id: autoria.organizacaoId,
-      nome_arquivo: arquivo.name,
-      ...caminhos,
-      largura,
-      altura,
-      tamanho_bytes: arquivo.size,
-      ordem,
-      rostos_analisados_em: indexarRostos && rostos ? new Date().toISOString() : null,
-    })
-    .select("id")
-    .single();
+  const { error } = await supabase.from("fotos").insert({
+    galeria_id: galeria.id,
+    user_id: autoria.userId,
+    organizacao_id: autoria.organizacaoId,
+    nome_arquivo: arquivo.name,
+    ...caminhos,
+    largura,
+    altura,
+    tamanho_bytes: arquivo.size,
+    ordem,
+  });
   if (error) {
     await removerArquivos([caminhos]);
     throw erroLegivel(`${arquivo.name}: ${error.message}`);
   }
-  if (rostos && rostos.length > 0) await gravarRostos(foto.id, galeria.id, rostos, autoria);
-  return rostos?.length ?? 0;
-}
-
-async function gravarRostos(
-  fotoId: string,
-  galeriaId: string,
-  vetores: number[][],
-  autoria: Autoria,
-): Promise<void> {
-  const { error } = await supabase.from("rostos").insert(
-    vetores.map((v) => ({
-      foto_id: fotoId,
-      galeria_id: galeriaId,
-      user_id: autoria.userId,
-      organizacao_id: autoria.organizacaoId,
-      embedding: vetorParaBanco(v),
-    })),
-  );
-  if (error) throw new Error(`Não foi possível gravar os rostos da foto: ${error.message}`);
-}
-
-export interface ResumoRostos {
-  totalFotos: number;
-  analisadas: number;
-  rostos: number;
-}
-
-export function useResumoRostos(galeriaId: string, ativo: boolean) {
-  return useQuery({
-    queryKey: [...CHAVE_GALERIAS, "rostos", galeriaId],
-    enabled: ativo,
-    queryFn: async (): Promise<ResumoRostos> => {
-      const contarFotos = () =>
-        supabase
-          .from("fotos")
-          .select("id", { count: "exact", head: true })
-          .eq("galeria_id", galeriaId);
-      const [total, analisadas, rostos] = await Promise.all([
-        contarFotos(),
-        contarFotos().not("rostos_analisados_em", "is", null),
-        supabase
-          .from("rostos")
-          .select("id", { count: "exact", head: true })
-          .eq("galeria_id", galeriaId),
-      ]);
-      for (const r of [total, analisadas, rostos]) {
-        if (r.error) throw new Error(r.error.message);
-      }
-      return {
-        totalFotos: total.count ?? 0,
-        analisadas: analisadas.count ?? 0,
-        rostos: rostos.count ?? 0,
-      };
-    },
-  });
-}
-
-/**
- * Procura rostos nas fotos da galeria que ainda não foram analisadas (enviadas
- * antes de virar evento). Lê o original pelo Storage, de 50 em 50 fotos.
- */
-export async function analisarFotosPendentes(
-  galeriaId: string,
-  autoria: Autoria,
-  aoAvancar: (feitas: number, total: number) => void,
-): Promise<{ fotos: number; rostos: number }> {
-  const pendentes = await supabase
-    .from("fotos")
-    .select("id", { count: "exact", head: true })
-    .eq("galeria_id", galeriaId)
-    .is("rostos_analisados_em", null);
-  if (pendentes.error) throw new Error(pendentes.error.message);
-  const total = pendentes.count ?? 0;
-  let feitas = 0;
-  let rostos = 0;
-  aoAvancar(0, total);
-
-  for (;;) {
-    const { data, error } = await supabase
-      .from("fotos")
-      .select("id, caminho_original")
-      .eq("galeria_id", galeriaId)
-      .is("rostos_analisados_em", null)
-      .order("ordem")
-      .limit(50);
-    if (error) throw new Error(error.message);
-    if (!data || data.length === 0) break;
-
-    for (const foto of data) {
-      const baixado = await supabase.storage.from(BUCKET_ORIGINAIS).download(foto.caminho_original);
-      if (baixado.error) throw new Error(`Não foi possível ler a foto: ${baixado.error.message}`);
-      const bitmap = await createImageBitmap(baixado.data, { imageOrientation: "from-image" });
-      let vetores: number[][];
-      try {
-        vetores = await rostosDaImagem(canvasParaAnalise(bitmap), "precisao");
-      } finally {
-        bitmap.close();
-      }
-      if (vetores.length > 0) await gravarRostos(foto.id, galeriaId, vetores, autoria);
-      const marcada = await supabase
-        .from("fotos")
-        .update({ rostos_analisados_em: new Date().toISOString() })
-        .eq("id", foto.id);
-      if (marcada.error) throw new Error(marcada.error.message);
-      rostos += vetores.length;
-      feitas += 1;
-      aoAvancar(feitas, total);
-    }
-  }
-  return { fotos: feitas, rostos };
 }

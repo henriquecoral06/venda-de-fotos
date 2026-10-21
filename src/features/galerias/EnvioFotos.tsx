@@ -21,21 +21,16 @@ interface Falha {
 interface Andamento {
   total: number;
   concluidas: number;
-  rostos: number;
 }
 
 /** Mesmo nome e tamanho = a mesma foto: o reenvio de uma pasta continua de onde parou. */
 const chaveDoArquivo = (nome: string, tamanho: number) => `${nome}:${tamanho}`;
 
-/**
- * Falha de rede passageira: tenta mais uma vez. A falha nos rostos vem depois
- * de a foto já estar gravada, então repetir duplicaria a foto.
- */
+/** Falha de rede passageira: tenta mais uma vez. */
 async function comUmaNovaTentativa<T>(acao: () => Promise<T>): Promise<T> {
   try {
     return await acao();
-  } catch (e: unknown) {
-    if (e instanceof Error && e.message.startsWith("Não foi possível gravar os rostos")) throw e;
+  } catch {
     await new Promise((r) => setTimeout(r, 1500));
     return acao();
   }
@@ -46,7 +41,6 @@ export function EnvioFotos({
   autoria,
   marca,
   proximaOrdem,
-  indexarRostos,
   existentes,
 }: {
   galeriaId: string;
@@ -54,8 +48,6 @@ export function EnvioFotos({
   /** Texto da marca d'água; nulo = prévias sem marca. */
   marca: string | null;
   proximaOrdem: number;
-  /** Galeria de evento com busca por selfie: procura rostos em cada foto. */
-  indexarRostos: boolean;
   /** Fotos que já estão na galeria, para não subir de novo. */
   existentes: { nome_arquivo: string; tamanho_bytes: number }[];
 }) {
@@ -99,7 +91,7 @@ export function EnvioFotos({
       return;
     }
 
-    const estado: Andamento = { total: validos.length, concluidas: 0, rostos: 0 };
+    const estado: Andamento = { total: validos.length, concluidas: 0 };
     const novasFalhas: Falha[] = [];
     setAndamento({ ...estado });
 
@@ -111,14 +103,13 @@ export function EnvioFotos({
         const arquivo = validos[indice];
         if (!arquivo) continue;
         try {
-          estado.rostos += await comUmaNovaTentativa(() =>
+          await comUmaNovaTentativa(() =>
             enviarFoto({
               arquivo,
               galeria: { id: galeriaId },
               autoria,
               marca,
               ordem: proximaOrdem + indice,
-              indexarRostos,
             }),
           );
         } catch (e: unknown) {
@@ -139,12 +130,7 @@ export function EnvioFotos({
 
     const certas = estado.total - novasFalhas.length;
     if (certas > 0) {
-      const enviadas = `${rotuloFotos(certas)} enviada${certas === 1 ? "" : "s"}`;
-      toast.success(
-        indexarRostos
-          ? `${enviadas}, ${estado.rostos.toLocaleString("pt-BR")} rosto${estado.rostos === 1 ? "" : "s"} encontrado${estado.rostos === 1 ? "" : "s"}.`
-          : `${enviadas}.`,
-      );
+      toast.success(`${rotuloFotos(certas)} enviada${certas === 1 ? "" : "s"}.`);
     }
     if (novasFalhas.length > 0) {
       toast.error(`${rotuloFotos(novasFalhas.length)} não subiram. Veja a lista e tente de novo.`);
@@ -204,8 +190,6 @@ export function EnvioFotos({
               ? `O cliente vê uma prévia com a marca d'água “${marca}”; o original só é liberado depois do pagamento.`
               : "O cliente vê uma prévia sem marca d'água; o original só é liberado depois do pagamento."}{" "}
             Se o envio parar, escolha as mesmas fotos de novo: as que já subiram ficam de fora.
-            {indexarRostos &&
-              " Os rostos são encontrados aqui mesmo, para a busca por selfie. A primeira foto demora um pouco mais."}
           </span>
         </label>
         {enviando && (

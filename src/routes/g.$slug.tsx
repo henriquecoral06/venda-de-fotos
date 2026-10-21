@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Download, Loader2, Lock, ScanFace, ShoppingBag } from "lucide-react";
+import { Check, Download, Loader2, Lock, ShoppingBag } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,11 +11,9 @@ import { LayoutPublico } from "@/components/layout/LayoutPublico";
 import {
   armazenamento,
   useGaleriaPublica,
-  type FotoEncontrada,
   type FotoPublica,
   type GaleriaPublica,
 } from "@/features/vitrine/api";
-import { BuscaSelfie } from "@/features/vitrine/BuscaSelfie";
 import { Checkout, type ModoCompra } from "@/features/vitrine/Checkout";
 import { GradeJustificada } from "@/features/vitrine/GradeJustificada";
 import { Lightbox } from "@/features/vitrine/Lightbox";
@@ -209,7 +206,6 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   const precoPacote = galeria.preco_pacote ?? null;
   const liberada = galeria.download_liberado ?? false;
   const evento = galeria.tipo === "evento";
-  const buscaRosto = evento && (galeria.busca_rosto ?? false);
   // Com o download liberado não há compra: a galeria é só para ver e baixar.
   const vende = !liberada;
 
@@ -220,20 +216,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   });
   const [indice, setIndice] = useState<number | null>(null);
   const [modo, setModo] = useState<ModoCompra | null>(null);
-  // Resultado da busca por selfie, na ordem de semelhança; nulo = mostrar todas.
-  const [encontradas, setEncontradas] = useState<FotoEncontrada[] | null>(null);
-  const [buscandoSelfie, setBuscandoSelfie] = useState(false);
   const [zip, setZip] = useState<{ feitas: number; total: number } | null>(null);
-
-  const exibidas = useMemo(() => {
-    if (!encontradas) return fotos;
-    const porId = new Map(fotos.map((f) => [f.id, f]));
-    return encontradas.map((e) => porId.get(e.id)).filter((f): f is FotoPublica => f !== undefined);
-  }, [fotos, encontradas]);
-  const talvez = useMemo(
-    () => new Set((encontradas ?? []).filter((e) => !e.provavel).map((e) => e.id)),
-    [encontradas],
-  );
 
   useEffect(() => {
     armazenamento.gravarSelecao(galeria.slug, [...selecionadas]);
@@ -257,7 +240,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   }
 
   async function baixarTodas() {
-    const arquivos = exibidas
+    const arquivos = fotos
       .filter((f): f is FotoPublica & { original: string } => typeof f.original === "string")
       .map((f) => ({ caminho: f.original, nome: f.nome, tamanho: f.tamanho ?? 0 }));
     if (arquivos.length === 0) return;
@@ -350,12 +333,6 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
                   Todas as {fotos.length} fotos por {brl(precoPacote)}
                 </Button>
               )}
-              {buscaRosto && fotos.length > 0 && (
-                <Button variant="outline" onClick={() => setBuscandoSelfie(true)}>
-                  <ScanFace className="size-4" />
-                  {encontradas ? "Nova selfie" : "Achar minhas fotos com uma selfie"}
-                </Button>
-              )}
               {evento && (
                 <Button asChild variant="ghost">
                   <Link to="/eventos">Outros eventos</Link>
@@ -365,19 +342,6 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
           </div>
         </div>
       </section>
-
-      {encontradas && (
-        <div className="mx-auto flex max-w-[96rem] flex-wrap items-center justify-between gap-3 px-4 pb-6 md:px-8">
-          <p className="text-sm text-foreground">
-            {encontradas.length > 0
-              ? `${rotuloFotos(encontradas.length)} com você, da mais parecida para a menos.${talvez.size > 0 ? " Confira as marcadas com “Talvez seja você”." : ""}`
-              : "Não achamos você nas fotos. Tente outra selfie, de frente e com boa luz."}
-          </p>
-          <Button variant="outline" size="sm" onClick={() => setEncontradas(null)}>
-            Ver todas as fotos
-          </Button>
-        </div>
-      )}
 
       <div className="px-1 pb-16 md:px-2">
         {fotos.length === 0 ? (
@@ -389,7 +353,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
           </div>
         ) : (
           <GradeJustificada
-            itens={exibidas}
+            itens={fotos}
             renderizar={(f, i) => {
               const marcada = selecionadas.has(f.id);
               return (
@@ -427,14 +391,6 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
                       <Check className="size-4" strokeWidth={2.5} />
                     </button>
                   )}
-                  {talvez.has(f.id) && (
-                    <Badge
-                      variant="secondary"
-                      className="pointer-events-none absolute bottom-2 left-2"
-                    >
-                      Talvez seja você
-                    </Badge>
-                  )}
                   {marcada && (
                     <span className="pointer-events-none absolute inset-0 ring-4 ring-primary ring-inset" />
                   )}
@@ -459,7 +415,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
       )}
 
       <Lightbox
-        fotos={exibidas}
+        fotos={fotos}
         indice={indice}
         aoMudarIndice={setIndice}
         aoFechar={() => setIndice(null)}
@@ -468,19 +424,6 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
         podeSelecionar={vende}
         whatsappRemocao={evento ? (galeria.contato_whatsapp ?? "") : ""}
       />
-
-      {buscaRosto && (
-        <BuscaSelfie
-          aberto={buscandoSelfie}
-          aoMudarAberto={setBuscandoSelfie}
-          slug={galeria.slug}
-          senha={senha}
-          aoEncontrar={(ids) => {
-            setEncontradas(ids);
-            setIndice(null);
-          }}
-        />
-      )}
 
       {vende && (
         <Checkout

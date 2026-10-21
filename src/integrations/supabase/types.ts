@@ -65,7 +65,6 @@ export type Database = {
           nome_arquivo: string
           ordem: number
           organizacao_id: string | null
-          rostos_analisados_em: string | null
           tamanho_bytes: number
           updated_at: string
           user_id: string
@@ -82,7 +81,6 @@ export type Database = {
           nome_arquivo: string
           ordem?: number
           organizacao_id?: string | null
-          rostos_analisados_em?: string | null
           tamanho_bytes?: number
           updated_at?: string
           user_id: string
@@ -99,7 +97,6 @@ export type Database = {
           nome_arquivo?: string
           ordem?: number
           organizacao_id?: string | null
-          rostos_analisados_em?: string | null
           tamanho_bytes?: number
           updated_at?: string
           user_id?: string
@@ -130,7 +127,6 @@ export type Database = {
       }
       galerias: {
         Row: {
-          busca_rosto: boolean
           capa_foto_id: string | null
           categoria: string
           chave: string
@@ -154,7 +150,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          busca_rosto?: boolean
           capa_foto_id?: string | null
           categoria?: string
           chave?: string
@@ -178,7 +173,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          busca_rosto?: boolean
           capa_foto_id?: string | null
           categoria?: string
           chave?: string
@@ -543,74 +537,11 @@ export type Database = {
         }
         Relationships: []
       }
-      rostos: {
-        Row: {
-          created_at: string
-          embedding: string
-          foto_id: string
-          galeria_id: string
-          id: string
-          organizacao_id: string | null
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          embedding: string
-          foto_id: string
-          galeria_id: string
-          id?: string
-          organizacao_id?: string | null
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          embedding?: string
-          foto_id?: string
-          galeria_id?: string
-          id?: string
-          organizacao_id?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rostos_foto_id_fkey"
-            columns: ["foto_id"]
-            isOneToOne: false
-            referencedRelation: "fotos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rostos_galeria_id_fkey"
-            columns: ["galeria_id"]
-            isOneToOne: false
-            referencedRelation: "galerias"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rostos_organizacao_id_fkey"
-            columns: ["organizacao_id"]
-            isOneToOne: false
-            referencedRelation: "organizacoes"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rostos_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "perfis"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      buscar_fotos_por_rosto: {
-        Args: { _rosto: number[]; _senha: string; _slug: string }
-        Returns: Json
-      }
       contas_fora_da_organizacao: {
         Args: Record<PropertyKey, never>
         Returns: { email: string; nome: string; user_id: string }[]

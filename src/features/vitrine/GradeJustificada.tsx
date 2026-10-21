@@ -76,7 +76,7 @@ export function GradeJustificada<T extends ItemDaGrade>({
     return () => obs.disconnect();
   }, []);
 
-  // Lista nova (busca por selfie, por exemplo) recomeça do primeiro lote.
+  // Lista nova (a galeria recarregou) recomeça do primeiro lote.
   useEffect(() => setVisiveis(LOTE), [itens]);
 
   useEffect(() => {

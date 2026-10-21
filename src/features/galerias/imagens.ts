@@ -6,8 +6,6 @@
  * não gera WebP no canvas (Safari antigo) devolve PNG, e aí vale o JPEG.
  */
 
-import { canvasParaAnalise, rostosDaImagem } from "@/lib/rostos";
-
 export const TIPOS_ACEITOS = ["image/jpeg", "image/png", "image/webp"] as const;
 export const TAMANHO_MAXIMO = 50 * 1024 * 1024;
 
@@ -19,11 +17,6 @@ export interface FotoProcessada {
   miniatura: Blob;
   largura: number;
   altura: number;
-  /**
-   * Vetores dos rostos, só quando pedidos (galeria de evento com busca por
-   * selfie). Nulo = a análise falhou: a foto sobe mesmo assim e fica pendente.
-   */
-  rostos: number[][] | null;
 }
 
 export function validarArquivo(arquivo: File): string | null {
@@ -115,11 +108,7 @@ async function redimensionar(
 }
 
 /** `marca` nula = prévia sem marca d'água (desligada em Loja e pagamento). */
-export async function processarFoto(
-  arquivo: File,
-  marca: string | null,
-  comRostos = false,
-): Promise<FotoProcessada> {
+export async function processarFoto(arquivo: File, marca: string | null): Promise<FotoProcessada> {
   // `from-image` respeita a orientação EXIF (foto de celular em pé).
   const imagem = await createImageBitmap(arquivo, { imageOrientation: "from-image" });
   try {
@@ -127,12 +116,7 @@ export async function processarFoto(
       redimensionar(imagem, LADO_PREVIA, marca, 0.82),
       redimensionar(imagem, LADO_MINIATURA, marca, 0.78),
     ]);
-    // Rostos na imagem sem marca d'água: o texto por cima atrapalha a detecção.
-    let rostos: number[][] | null = [];
-    if (comRostos) {
-      rostos = await rostosDaImagem(canvasParaAnalise(imagem), "precisao").catch(() => null);
-    }
-    return { previa, miniatura, largura: imagem.width, altura: imagem.height, rostos };
+    return { previa, miniatura, largura: imagem.width, altura: imagem.height };
   } finally {
     imagem.close();
   }

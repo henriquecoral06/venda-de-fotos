@@ -44,7 +44,6 @@ const galeriaPublica = z.object({
   tipo: z.enum(["privada", "evento"]).optional(),
   categoria: z.string().optional(),
   local: z.string().optional(),
-  busca_rosto: z.boolean().optional(),
   contato_whatsapp: z.string().nullable().optional(),
   protegida: z.boolean(),
   capa: z.string().nullable(),
@@ -92,7 +91,6 @@ const eventoPublico = z.object({
   local: z.string(),
   data_evento: z.string().nullable(),
   preco_foto: z.number(),
-  busca_rosto: z.boolean(),
   total_fotos: z.number(),
   capa: z.string().nullable(),
 });
@@ -102,8 +100,6 @@ const vitrinePublica = z.object({
   marca,
   eventos: z.array(eventoPublico),
 });
-
-const resultadoBusca = z.array(z.object({ id: z.string(), distancia: z.number() }));
 
 export type EventoPublico = z.infer<typeof eventoPublico>;
 export type VitrinePublica = z.infer<typeof vitrinePublica>;
@@ -152,37 +148,6 @@ export function useVitrine() {
       return vitrine;
     },
   });
-}
-
-/** Acima disto (até o corte de 0,5 do banco) o rosto é parecido, mas pode ser outra pessoa. */
-const DISTANCIA_PROVAVEL = 0.4;
-
-export interface FotoEncontrada {
-  id: string;
-  /** Muito provável que seja a pessoa; falso = "talvez seja você". */
-  provavel: boolean;
-}
-
-/**
- * Fotos da galeria em que o rosto aparece, da mais parecida para a menos.
- * Só o vetor (128 números) sai do navegador.
- */
-export async function buscarFotosPorRosto(
-  slug: string,
-  senha: string,
-  rosto: number[],
-): Promise<FotoEncontrada[]> {
-  const { data, error } = await supabase.rpc("buscar_fotos_por_rosto", {
-    _slug: slug,
-    _senha: senha,
-    _rosto: rosto,
-  });
-  if (error) throw new Error(error.message);
-  if (data === null) throw new Error(SENHA_INCORRETA);
-  return (ler(resultadoBusca, data) ?? []).map((r) => ({
-    id: r.id,
-    provavel: r.distancia < DISTANCIA_PROVAVEL,
-  }));
 }
 
 export const esquemaComprador = z.object({

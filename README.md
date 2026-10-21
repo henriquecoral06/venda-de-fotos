@@ -18,12 +18,11 @@ toda mudança neste repositório.
   sem fotos, loja sem Pix), os números da venda, as galerias e os pedidos recentes.
 - `/galerias`: lista com capa, situação (rascunho, publicada, arquivada), fotos, pedidos e preço.
   Cada galeria é de **cliente** (link e senha) ou **evento aberto** (torneio, corrida, festa), com
-  categoria, local e busca por selfie.
+  categoria e local.
 - `/galerias/$id`: envio em lote (arrastar e soltar; reenviar a mesma pasta continua de onde
   parou, com nova tentativa e lista das falhas), grade de fotos, escolha da capa, exclusão, link
   secreto para copiar ou trocar, e edição da galeria (título, cliente, data, senha, preço por foto,
-  pacote com todas as fotos, mensagem, download liberado sem pedido). Em evento aberto, os rostos são encontrados no envio e há o botão
-  "Procurar rostos nas fotos" para as que subiram antes.
+  pacote com todas as fotos, mensagem, download liberado sem pedido).
 - `/pedidos`: pedidos dos clientes com filtro por situação, detalhe com as fotos escolhidas,
   confirmar pagamento e cancelar.
 - `/loja`: logo (PNG, JPG, WebP ou SVG; o SVG vira PNG no navegador) e cores da marca (sugeridas a
@@ -43,7 +42,7 @@ toda mudança neste repositório.
   carrega aos poucos, visualização ampliada com setas, teclado e deslizar no celular, seleção de
   fotos guardada no navegador, compra avulsa ou do pacote completo. Com o download liberado pelo
   fotógrafo: baixar uma foto ou todas em ZIP. Em evento
-  aberto: busca por selfie (com consentimento) e pedido de remoção da foto pelo WhatsApp.
+  aberto: pedido de remoção da foto pelo WhatsApp (LGPD).
 - `/l/<link>`: landing page publicada, com os pixels e as tags do fotógrafo.
 - `/pedido/<código>`: situação do pedido, Pix para copiar, botão de WhatsApp com o comprovante e,
   depois do pagamento, os downloads dos originais (um a um ou todos em ZIP, montado no navegador e
@@ -69,18 +68,6 @@ toda mudança neste repositório.
   parte de pedido pago ou de galeria com download liberado. A policy vale só para assinar o link:
   listar a pasta de originais não mostra nada a quem não é da equipe.
 - Galeria com preço zero entrega de graça: o pedido já nasce pago.
-
-## Busca por selfie
-
-- Reconhecimento facial no navegador com [face-api](https://github.com/vladmandic/face-api)
-  (MIT). A biblioteca e os modelos ficam em `public/rostos` e só são baixados por quem usa a busca
-  ou envia fotos de evento; não entram no bundle nem no Worker.
-- No envio, o painel calcula um vetor de 128 números por rosto (detector SSD, bom para multidão) e
-  grava em `rostos` (pgvector). A selfie do visitante é lida no aparelho dele (detector leve, com o
-  preciso como reserva); só o vetor vai para `buscar_fotos_por_rosto`, que não grava nada.
-- Distância menor que 0,5 conta como encontrada; entre 0,4 e 0,5 a foto aparece marcada como
-  "Talvez seja você".
-- LGPD: consentimento antes da selfie e pedido de remoção pelo WhatsApp da loja na foto ampliada.
 
 ## Como rodar
 
@@ -151,11 +138,11 @@ src/routes/g.$slug.tsx           galeria do cliente
 src/routes/pedido.$codigo.tsx    pedido do cliente
 src/routes/eventos.tsx           vitrine de eventos abertos
 src/routes/l.$slug.tsx           landing page pública
-src/lib/rostos.ts                reconhecimento facial no navegador (carrega public/rostos)
 supabase/migrations/20261014150000_venda_de_fotos.sql   tabelas, funções, Storage e reparo
-supabase/migrations/20261019120000_eventos_abertos.sql  eventos, rostos e busca por selfie
+supabase/migrations/20261019120000_eventos_abertos.sql  eventos abertos e vitrine
 supabase/migrations/20261021120000_landing_pages.sql    landing pages, segredos e API de Conversões
 supabase/migrations/20261022120000_revisao_seguranca.sql link secreto, limites, cadastro fechado, download liberado
+supabase/migrations/20261023120000_remover_busca_selfie.sql tira a busca por selfie e apaga os rostos
 ```
 
 ## Próximos passos
@@ -164,5 +151,4 @@ supabase/migrations/20261022120000_revisao_seguranca.sql link secreto, limites, 
 - E-mail para o cliente quando o pedido é criado e quando é pago.
 - Favoritos e seleção para álbum (o cliente marca e envia, sem pagar).
 - Busca por número de camisa/peito nos eventos (marcação ou OCR no navegador).
-- Limite de buscas por selfie por visitante.
 - Domínio próprio e página de portfólio do fotógrafo.
