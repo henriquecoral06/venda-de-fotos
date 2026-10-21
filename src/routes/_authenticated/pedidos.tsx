@@ -4,6 +4,7 @@ import { Check, Clock, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { BarraSelecao } from "@/components/BarraSelecao";
+import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonTabela } from "@/components/Skeletons";
@@ -68,6 +69,7 @@ function PaginaPedidos() {
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const mudarStatus = useMudarStatusPedidos();
+  const [cancelando, setCancelando] = useState<{ mensagem: (n: number) => string } | null>(null);
 
   const filtrados = useMemo(() => {
     const todos = lista.data ?? [];
@@ -96,6 +98,7 @@ function PaginaPedidos() {
             toast.error(`Sem permissão para alterar ${pedidos(r.recusados).texto}.`);
           }
           setSelecionados(new Set());
+          setCancelando(null);
         },
         onError: (e: Error) => toast.error(e.message),
       },
@@ -152,7 +155,11 @@ function PaginaPedidos() {
                     a.status === "cancelado" ? "text-destructive hover:text-destructive" : undefined
                   }
                   disabled={mudarStatus.isPending}
-                  onClick={() => aplicarStatus(a.status, a.mensagem)}
+                  onClick={() =>
+                    a.status === "cancelado"
+                      ? setCancelando({ mensagem: a.mensagem })
+                      : aplicarStatus(a.status, a.mensagem)
+                  }
                 >
                   {mudarStatus.isPending && mudarStatus.variables?.status === a.status ? (
                     <Loader2 className="size-4 animate-spin" />
@@ -184,6 +191,15 @@ function PaginaPedidos() {
       )}
 
       <DetalhePedido pedido={aberto} aoFechar={() => setAbertoId(null)} />
+      <ConfirmarAcao
+        aberto={cancelando !== null}
+        titulo={`Cancelar ${pedidos(marcados.length).texto}?`}
+        descricao="Pedido pago que for cancelado perde o acesso aos downloads. O cliente vê o pedido como cancelado."
+        rotuloConfirmar="Cancelar pedidos"
+        carregando={mudarStatus.isPending}
+        aoConfirmar={() => cancelando && aplicarStatus("cancelado", cancelando.mensagem)}
+        aoFechar={() => setCancelando(null)}
+      />
     </div>
   );
 }

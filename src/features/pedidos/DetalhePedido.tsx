@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, Copy, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { brl, dataHoraBR } from "@/lib/format";
 import { linkPedido, rotuloFotos, urlPrevia } from "@/lib/fotos";
 import {
@@ -21,6 +23,7 @@ import {
   type PedidoComGaleria,
   type StatusPedido,
 } from "./api";
+import { Miniatura } from "@/components/Miniatura";
 
 function Linha({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (
@@ -40,6 +43,7 @@ export function DetalhePedido({
 }) {
   const itens = useItensPedido(pedido?.id ?? null);
   const mudar = useMudarStatusPedido();
+  const [confirmandoCancelar, setConfirmandoCancelar] = useState(false);
 
   function alterar(status: StatusPedido, mensagem: string) {
     if (!pedido) return;
@@ -48,6 +52,7 @@ export function DetalhePedido({
       {
         onSuccess: () => {
           toast.success(mensagem);
+          setConfirmandoCancelar(false);
           aoFechar();
         },
         onError: (e: Error) => toast.error(e.message),
@@ -118,7 +123,7 @@ export function DetalhePedido({
                   (item) =>
                     item.foto && (
                       <li key={item.foto.id}>
-                        <img
+                        <Miniatura
                           src={urlPrevia(item.foto.caminho_miniatura)}
                           alt={item.foto.nome_arquivo}
                           title={item.foto.nome_arquivo}
@@ -141,7 +146,7 @@ export function DetalhePedido({
                   <Button
                     variant="outline"
                     disabled={mudar.isPending}
-                    onClick={() => alterar("cancelado", "Pedido cancelado.")}
+                    onClick={() => setConfirmandoCancelar(true)}
                   >
                     <X className="size-4" />
                     Cancelar pedido
@@ -167,6 +172,19 @@ export function DetalhePedido({
           </>
         )}
       </DialogContent>
+      <ConfirmarAcao
+        aberto={confirmandoCancelar}
+        titulo="Cancelar este pedido?"
+        descricao={
+          pedido?.status === "pago"
+            ? "O pedido já foi pago: cancelado, o cliente perde o acesso aos downloads. Devolva o valor por fora, se for o caso."
+            : "O cliente vê o pedido como cancelado e não consegue mais pagar por ele."
+        }
+        rotuloConfirmar="Cancelar pedido"
+        carregando={mudar.isPending}
+        aoConfirmar={() => alterar("cancelado", "Pedido cancelado.")}
+        aoFechar={() => setConfirmandoCancelar(false)}
+      />
     </Dialog>
   );
 }

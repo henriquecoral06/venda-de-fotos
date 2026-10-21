@@ -9,10 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EstadoVazio } from "@/components/PageHeader";
 import { LayoutPublico } from "@/components/layout/LayoutPublico";
 import { linkDownload, usePedidoPublico, type PedidoPublico } from "@/features/vitrine/api";
+import { baixarZip } from "@/features/vitrine/zip";
 import { brl, dataHoraBR } from "@/lib/format";
 import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { BRAND } from "@/config/brand";
+import { Miniatura } from "@/components/Miniatura";
 
 export const Route = createFileRoute("/pedido/$codigo")({
   ssr: false,
@@ -60,7 +62,9 @@ function PaginaPedido() {
               {p.galeria.titulo}
             </Link>
           </p>
-          <h1 className="text-heading-lg">Pedido de {p.cliente_nome}</h1>
+          <h1 className="text-heading-lg font-light md:text-heading-xl">
+            Pedido de {p.cliente_nome}
+          </h1>
           <p className="text-sm text-muted-foreground">
             {p.pacote_completo ? "Pacote completo" : rotuloFotos(p.itens.length)} ·{" "}
             {p.valor_total > 0 ? brl(p.valor_total) : "grátis"} · feito em{" "}
@@ -86,7 +90,7 @@ function PaginaPedido() {
           <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
             {p.itens.map((item) => (
               <li key={item.foto_id}>
-                <img
+                <Miniatura
                   src={urlPrevia(item.miniatura)}
                   alt={item.nome}
                   loading="lazy"
@@ -169,7 +173,7 @@ function Pagamento({ pedido }: { pedido: PedidoPublico }) {
 
 function Downloads({ pedido }: { pedido: PedidoPublico }) {
   const [baixando, setBaixando] = useState<string | null>(null);
-  const [baixandoTodas, setBaixandoTodas] = useState(false);
+  const [zip, setZip] = useState<{ feitas: number; total: number } | null>(null);
   const itens = pedido.itens.filter(
     (i): i is typeof i & { original: string } => i.original !== null,
   );
@@ -194,19 +198,18 @@ function Downloads({ pedido }: { pedido: PedidoPublico }) {
     }
   }
 
-  // Um arquivo por vez, com intervalo: o navegador pede uma única permissão
-  // para downloads múltiplos e não descarta os seguintes.
   async function baixarTodas() {
-    setBaixandoTodas(true);
     try {
-      for (const item of itens) {
-        abrir(await linkDownload(item.original, item.nome));
-        await new Promise((r) => setTimeout(r, 700));
-      }
+      await baixarZip(
+        itens.map((i) => ({ caminho: i.original, nome: i.nome, tamanho: i.tamanho ?? 0 })),
+        pedido.galeria.titulo,
+        (feitas, total) => setZip({ feitas, total }),
+      );
+      toast.success("ZIP pronto. Confira a pasta de downloads.");
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível baixar.");
+      toast.error(e instanceof Error ? e.message : "Não foi possível montar o ZIP.");
     } finally {
-      setBaixandoTodas(false);
+      setZip(null);
     }
   }
 
@@ -227,14 +230,12 @@ function Downloads({ pedido }: { pedido: PedidoPublico }) {
           <Button
             className={CLASSE_BOTAO_MARCA}
             onClick={() => void baixarTodas()}
-            disabled={baixandoTodas}
+            disabled={zip !== null}
           >
-            {baixandoTodas ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Download className="size-4" />
-            )}
-            Baixar todas ({itens.length})
+            {zip ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {zip
+              ? `Preparando ${zip.feitas} de ${zip.total}`
+              : `Baixar todas em ZIP (${itens.length})`}
           </Button>
         )}
       </Card>
@@ -245,7 +246,7 @@ function Downloads({ pedido }: { pedido: PedidoPublico }) {
             key={item.foto_id}
             className="overflow-hidden rounded-lg border border-border bg-card"
           >
-            <img
+            <Miniatura
               src={urlPrevia(item.miniatura)}
               alt={item.nome}
               loading="lazy"

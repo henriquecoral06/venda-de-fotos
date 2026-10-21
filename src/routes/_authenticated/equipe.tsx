@@ -15,6 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { Campo } from "@/components/Campo";
 import { SkeletonTabela } from "@/components/Skeletons";
@@ -60,10 +61,14 @@ function ComOrganizacao({ organizacao }: { organizacao: Organizacao }) {
   const meuId = ctx?.perfil?.id ?? "";
   const membros = useMembros(organizacao.id);
   const remover = useRemoverMembro();
+  const [removendo, setRemovendo] = useState<{ userId: string; nome: string } | null>(null);
 
   function removerMembro(userId: string) {
     remover.mutate(userId, {
-      onSuccess: () => toast.success("Membro removido da organização."),
+      onSuccess: () => {
+        toast.success("Membro removido da organização.");
+        setRemovendo(null);
+      },
       onError: (e: Error) => toast.error(e.message),
     });
   }
@@ -74,7 +79,7 @@ function ComOrganizacao({ organizacao }: { organizacao: Organizacao }) {
     <div className="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
       <PageHeader
         titulo="Equipe"
-        descricao="Toda conta criada nesta instalação entra na organização enquanto o cadastro estiver aberto."
+        descricao="Quem trabalha com você no estúdio. Uma conta nova só entra na equipe enquanto o cadastro estiver aberto."
       />
 
       <CartaoOrganizacao
@@ -131,7 +136,7 @@ function ComOrganizacao({ organizacao }: { organizacao: Organizacao }) {
                           size="sm"
                           className="text-destructive hover:text-destructive"
                           disabled={remover.isPending}
-                          onClick={() => removerMembro(m.userId)}
+                          onClick={() => setRemovendo({ userId: m.userId, nome: m.nome })}
                         >
                           Remover
                         </Button>
@@ -146,6 +151,16 @@ function ComOrganizacao({ organizacao }: { organizacao: Organizacao }) {
       </section>
 
       {ehDono && <ContasFora />}
+
+      <ConfirmarAcao
+        aberto={removendo !== null}
+        titulo={`Remover ${removendo?.nome ?? "o membro"} da equipe?`}
+        descricao="A pessoa deixa de ver as galerias, os pedidos e a loja. O que ela criou continua com a organização. Dá para readmitir depois, na lista de contas fora da organização."
+        rotuloConfirmar="Remover da equipe"
+        carregando={remover.isPending}
+        aoConfirmar={() => removendo && removerMembro(removendo.userId)}
+        aoFechar={() => setRemovendo(null)}
+      />
     </div>
   );
 }
@@ -243,7 +258,7 @@ function CartaoCadastro({
         </div>
         <p className="text-body-sm text-muted-foreground">
           {aberto
-            ? "Quem se cadastrar na tela de entrada entra na organização como membro."
+            ? "Quem criar conta agora entra na equipe e vê todas as galerias, pedidos e originais. Feche assim que a pessoa entrar."
             : "A tela de entrada recusa cadastros novos. Quem já tem conta continua entrando."}
         </p>
       </div>

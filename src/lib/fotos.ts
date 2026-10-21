@@ -22,9 +22,25 @@ export function gerarSlug(texto: string): string {
     .replace(/-+$/g, "");
 }
 
+interface GaleriaComLink {
+  tipo: "privada" | "evento";
+  senha: string;
+  slug: string;
+  chave: string;
+}
+
+/**
+ * Parte do link público: evento sem senha usa o nome legível (é o da vitrine);
+ * galeria de cliente e evento com senha usam a chave secreta, que não dá para
+ * adivinhar. Mesma regra de `link_da_galeria` no banco.
+ */
+export function enderecoGaleria(g: GaleriaComLink): string {
+  return `/g/${g.tipo === "evento" && g.senha === "" ? g.slug : g.chave}`;
+}
+
 /** Link da galeria que o fotógrafo manda para o cliente. */
-export function linkGaleria(slug: string): string {
-  return `${window.location.origin}/g/${slug}`;
+export function linkGaleria(g: GaleriaComLink): string {
+  return `${window.location.origin}${enderecoGaleria(g)}`;
 }
 
 export function linkPedido(codigo: string): string {

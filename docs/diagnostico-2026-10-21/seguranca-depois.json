@@ -1,0 +1,98 @@
+[
+  {
+    "teste": "cadastro fechado recusa conta nova",
+    "ok": true
+  },
+  {
+    "teste": "dono remove a conta 2",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê galerias",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê fotos",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê pedidos",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê pedido_itens",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê landing_pages",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lê configuracoes_loja",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não altera galeria do estúdio",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não exclui galeria do estúdio",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não assina original do estúdio",
+    "ok": true
+  },
+  {
+    "teste": "conta removida não lista a pasta de originais",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê galerias",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê fotos",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê pedidos",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê configuracoes_loja",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê perfis",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê landing_segredos",
+    "ok": true
+  },
+  {
+    "teste": "visitante não lê limites_acesso",
+    "ok": true
+  },
+  {
+    "teste": "nome da galeria adivinhado não abre nada",
+    "ok": true
+  },
+  {
+    "teste": "link certo sem senha não mostra as fotos",
+    "ok": true
+  },
+  {
+    "teste": "visitante não baixa original sem pedido pago",
+    "ok": true
+  },
+  {
+    "teste": "senha errada bloqueia depois de 10 tentativas",
+    "ok": true
+  },
+  {
+    "teste": "pedidos em série param no limite",
+    "ok": true
+  }
+]

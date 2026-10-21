@@ -16,7 +16,7 @@ export interface ItemPedido {
 export const CHAVE_PEDIDOS = ["pedidos"] as const;
 
 export const ROTULO_STATUS_PEDIDO: Record<StatusPedido, string> = {
-  aguardando_pagamento: "Aguardando pagamento",
+  aguardando_pagamento: "Aguardando",
   pago: "Pago",
   cancelado: "Cancelado",
 };

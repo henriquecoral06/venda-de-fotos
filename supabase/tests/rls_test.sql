@@ -9,8 +9,8 @@
 -- temporárias, e set_config('role') feito dentro de uma função é desfeito na saída.
 --
 -- Modelo: 1 instalação = 1 organização. A primeira conta criada vira dona de
--- "Minha organização"; as seguintes entram como membros enquanto o cadastro
--- estiver aberto. Com `cadastro_aberto = false`, handle_new_user levanta
+-- "Minha organização", que nasce com o cadastro fechado; as seguintes entram
+-- como membros quando o dono abre o cadastro. Com `cadastro_aberto = false`, handle_new_user levanta
 -- 'Cadastro fechado…': o trigger é AFTER INSERT, então a exceção desfaz o
 -- insert em auth.users (e o perfil) e o cliente recebe erro no `signUp`.
 --
@@ -36,6 +36,7 @@ declare
   j jsonb;
   gal_evento uuid;
   lp uuid;
+  chave_org text;
   foto_evento uuid;
   papel_atual public.papel_organizacao;
   aberto boolean;
@@ -61,7 +62,9 @@ begin
   if n <> 1 then raise exception 'RLS FALHOU: 1º cadastro deixou % organizações, esperado 1', n; end if;
   select o.id, o.nome, o.cadastro_aberto into org_id, txt, aberto from public.organizacoes o;
   if txt <> 'Minha organização' then raise exception 'RLS FALHOU: organização nasceu com nome %', txt; end if;
-  if not aberto then raise exception 'RLS FALHOU: organização nasceu com o cadastro fechado'; end if;
+  if aberto then raise exception 'RLS FALHOU: organização nasceu com o cadastro aberto'; end if;
+  -- O dono abre o cadastro para a equipe (aqui direto, como postgres).
+  update public.organizacoes set cadastro_aberto = true where id = org_id;
   select papel into papel_atual from public.organizacao_membros
    where user_id = u_dono and organizacao_id = org_id;
   if papel_atual is distinct from 'dono' then
@@ -327,6 +330,7 @@ begin
      set status = 'publicada', senha = 'segredo', preco_foto = 15, preco_pacote = 25
    where id = gal_org;
   if not found then raise exception 'RLS FALHOU: dono não publicou a galeria'; end if;
+  select chave into chave_org from public.galerias where id = gal_org;
 
   -- o dono não enxerga a galeria pessoal do membro, então não põe foto nela
   begin
@@ -353,11 +357,15 @@ begin
   exception when insufficient_privilege then null;
   end;
 
-  j := public.galeria_publica('rls-galeria-org', 'errada');
+  -- O nome legível não abre galeria de cliente: só a chave do link.
+  if public.galeria_publica('rls-galeria-org', 'segredo') is not null then
+    raise exception 'RLS FALHOU: galeria de cliente abriu pelo slug';
+  end if;
+  j := public.galeria_publica(chave_org, 'errada');
   if j is null or (j ->> 'liberada')::boolean or j ? 'fotos' then
     raise exception 'RLS FALHOU: galeria com senha errada liberou as fotos: %', j;
   end if;
-  j := public.galeria_publica('RLS-Galeria-Org', 'segredo');
+  j := public.galeria_publica(upper(chave_org), 'segredo');
   if j is null or not (j ->> 'liberada')::boolean or jsonb_array_length(j -> 'fotos') <> 2 then
     raise exception 'RLS FALHOU: galeria com a senha certa não veio com as 2 fotos: %', j;
   end if;
@@ -369,22 +377,26 @@ begin
   end if;
 
   -- 23. pedido: o preço sai da galeria; senha e fotos são conferidas
-  begin
-    perform public.criar_pedido('rls-galeria-org', 'errada', 'Cliente', 'cliente@exemplo.test', '',
-                                array[foto_a], false);
+  if public.criar_pedido(chave_org, 'errada', 'Cliente', 'cliente@exemplo.test', '',
+                         array[foto_a], false) is not null then
     raise exception 'RLS FALHOU: pedido criado com a senha errada';
+  end if;
+  begin
+    perform public.criar_pedido(chave_org, 'segredo', 'Cliente', 'cliente@exemplo.test', 'abc',
+                                array[foto_a], false);
+    raise exception 'RLS FALHOU: pedido aceitou telefone inválido';
   exception when others then
     if sqlerrm like 'RLS FALHOU%' then raise; end if;
   end;
   begin
-    perform public.criar_pedido('rls-galeria-org', 'segredo', 'Cliente', 'cliente@exemplo.test', '',
+    perform public.criar_pedido(chave_org, 'segredo', 'Cliente', 'cliente@exemplo.test', '',
                                 array[foto_a, gen_random_uuid()], false);
     raise exception 'RLS FALHOU: pedido aceitou foto de fora da galeria';
   exception when others then
     if sqlerrm like 'RLS FALHOU%' then raise; end if;
   end;
 
-  cod := public.criar_pedido('rls-galeria-org', 'segredo', 'Cliente Teste', 'Cliente@Exemplo.test', '',
+  cod := public.criar_pedido(chave_org, 'segredo', 'Cliente Teste', 'Cliente@Exemplo.test', '',
                              array[foto_a, foto_a], false);
   j := public.pedido_publico(cod);
   if (j ->> 'valor_total')::numeric <> 15 or j ->> 'status' <> 'aguardando_pagamento'
@@ -401,7 +413,7 @@ begin
     raise exception 'RLS FALHOU: pedido_publico devolveu pedido para código inexistente';
   end if;
 
-  cod_pacote := public.criar_pedido('rls-galeria-org', 'segredo', 'Cliente Pacote', 'pacote@exemplo.test',
+  cod_pacote := public.criar_pedido(chave_org, 'segredo', 'Cliente Pacote', 'pacote@exemplo.test',
                                     '', null, true);
   j := public.pedido_publico(cod_pacote);
   if (j ->> 'valor_total')::numeric <> 25 or jsonb_array_length(j -> 'itens') <> 2 then
@@ -473,7 +485,7 @@ begin
     raise exception 'RLS FALHOU: cor fora do formato aceita';
   exception when check_violation then null;
   end;
-  j := public.galeria_publica('rls-galeria-org', 'segredo');
+  j := public.galeria_publica(chave_org, 'segredo');
   if j -> 'marca' ->> 'cor_primaria' is distinct from '#112233'
      or j -> 'marca' ->> 'logo' is distinct from org_id || '/logo.png' then
     raise exception 'RLS FALHOU: galeria pública sem a marca: %', j -> 'marca';
@@ -525,7 +537,7 @@ begin
     raise exception 'RLS FALHOU: selfie diferente achou foto: %', j;
   end if;
   begin
-    perform public.buscar_fotos_por_rosto('rls-galeria-org', 'segredo', array_fill(0.1::real, array[128]));
+    perform public.buscar_fotos_por_rosto(chave_org, 'segredo', array_fill(0.1::real, array[128]));
     raise exception 'RLS FALHOU: busca por selfie em galeria de cliente';
   exception when others then
     if sqlerrm like 'RLS FALHOU%' then raise; end if;
@@ -614,6 +626,76 @@ begin
   if public.enviar_evento_meta('rls-landing', 'PageView', 'ev-3', '', '', '', '', '') then
     raise exception 'RLS FALHOU: evento enviado de landing não publicada';
   end if;
+
+  -- 30. download liberado pelo fotógrafo; limite de pedidos e de senha errada
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  update public.galerias set download_liberado = true where id = gal_evento;
+  if not found then raise exception 'RLS FALHOU: dono não liberou o download'; end if;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  j := public.galeria_publica('rls-evento', '');
+  if j -> 'fotos' -> 0 ->> 'original' is distinct from org_id || '/rls/e.jpg' then
+    raise exception 'RLS FALHOU: galeria com download liberado sem o original: %', j -> 'fotos';
+  end if;
+  if not public.foto_original_liberada(org_id || '/rls/e.jpg') then
+    raise exception 'RLS FALHOU: Storage não liberou o original da galeria liberada';
+  end if;
+  j := public.galeria_publica(chave_org, 'segredo');
+  if j -> 'fotos' -> 0 ->> 'original' is not null then
+    raise exception 'RLS FALHOU: galeria sem download liberado expôs o original';
+  end if;
+
+  ok := false;
+  for n in 1..12 loop
+    begin
+      perform public.criar_pedido('rls-evento', '', 'Robô', 'robo' || n || '@exemplo.test', '',
+                                  array[foto_evento], false);
+    exception when others then
+      if sqlerrm like 'Muitas tentativas%' then ok := true; exit; end if;
+      raise;
+    end;
+  end loop;
+  if not ok then raise exception 'RLS FALHOU: 12 pedidos seguidos do mesmo visitante sem limite'; end if;
+
+  ok := false;
+  for n in 1..12 loop
+    begin
+      perform public.galeria_publica(chave_org, 'chute' || n);
+    exception when others then
+      if sqlerrm like 'Muitas tentativas%' then ok := true; exit; end if;
+      raise;
+    end;
+  end loop;
+  if not ok then raise exception 'RLS FALHOU: 12 senhas erradas seguidas sem bloqueio'; end if;
+  begin
+    perform public.galeria_publica(chave_org, 'segredo');
+    raise exception 'RLS FALHOU: galeria abriu durante o bloqueio por tentativas';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  begin
+    perform 1 from public.limites_acesso;
+    raise exception 'RLS FALHOU: visitante leu limites_acesso';
+  exception when insufficient_privilege then null;
+  end;
+
+  -- 31. original pago: o Storage assina o link, mas listar a pasta não o mostra
+  perform set_config('role', 'none', true);
+  insert into storage.objects (bucket_id, name) values ('originais', org_id || '/rls/a.jpg');
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  perform set_config('storage.operation', 'storage.object.sign', true);
+  select count(*) into n from storage.objects where bucket_id = 'originais' and name = org_id || '/rls/a.jpg';
+  if n <> 1 then raise exception 'RLS FALHOU: comprador não consegue assinar o original pago'; end if;
+  perform set_config('storage.operation', 'storage.object.list', true);
+  select count(*) into n from storage.objects where bucket_id = 'originais';
+  if n <> 0 then raise exception 'RLS FALHOU: visitante listou % original(is)', n; end if;
+  perform set_config('storage.operation', '', true);
+  perform set_config('role', 'none', true);
 
   -- ── reparo na instalação vazia ──────────────────────────────────────────
   -- 20. sem organização nenhuma, garantir_organizacao cria e faz dono

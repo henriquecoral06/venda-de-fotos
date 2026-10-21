@@ -22,11 +22,10 @@ export function TabelaPedidos({
       chave: "cliente_nome",
       titulo: "Cliente",
       ordenavel: true,
-      classe: "max-w-[14rem] sm:max-w-xs",
       renderizar: (p) => (
         <Button
           variant="link"
-          className="h-auto max-w-full justify-start p-0 text-left text-foreground"
+          className="h-auto max-w-[10rem] justify-start p-0 text-left text-foreground sm:max-w-xs"
           onClick={() => aoAbrir(p)}
         >
           <span className="truncate">{p.cliente_nome}</span>

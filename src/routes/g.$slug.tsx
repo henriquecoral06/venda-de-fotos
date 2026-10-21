@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Loader2, Lock, ScanFace, ShoppingBag } from "lucide-react";
+import { Check, Download, Loader2, Lock, ScanFace, ShoppingBag } from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Campo } from "@/components/Campo";
@@ -18,12 +18,16 @@ import {
 } from "@/features/vitrine/api";
 import { BuscaSelfie } from "@/features/vitrine/BuscaSelfie";
 import { Checkout, type ModoCompra } from "@/features/vitrine/Checkout";
+import { GradeJustificada } from "@/features/vitrine/GradeJustificada";
 import { Lightbox } from "@/features/vitrine/Lightbox";
+import { baixarZip } from "@/features/vitrine/zip";
 import { brl, dataBR } from "@/lib/format";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
+import { ariaErro } from "@/lib/validacao";
 import { cn } from "@/lib/utils";
 import { BRAND } from "@/config/brand";
+import { Miniatura } from "@/components/Miniatura";
 
 export const Route = createFileRoute("/g/$slug")({
   // Senha e seleção ficam no navegador do visitante.
@@ -42,13 +46,22 @@ function PaginaGaleriaPublica() {
       document.title = `${galeria.data.titulo} | ${galeria.data.fotografo || BRAND.name}`;
   }, [galeria.data]);
 
+  function trocarSenha(s: string) {
+    armazenamento.gravarSenha(slug, s);
+    setSenha(s);
+  }
+
   if (galeria.isPending) {
     return (
       <LayoutPublico fotografo="">
-        <Skeleton className="h-[45vh] w-full rounded-none" />
-        <div className="mx-auto grid max-w-7xl grid-cols-2 gap-3 p-4 md:grid-cols-4">
+        <Skeleton className="h-[58vh] w-full rounded-none" />
+        <div className="mx-auto max-w-[96rem] space-y-3 px-4 py-10 md:px-8">
+          <Skeleton className="h-12 w-2/3 max-w-xl" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+        <div className="grid grid-cols-2 gap-1 px-1 md:grid-cols-4 md:px-2">
           {Array.from({ length: 8 }, (_, i) => (
-            <Skeleton key={i} className="aspect-[4/3]" />
+            <Skeleton key={i} className="aspect-[4/3] rounded-none" />
           ))}
         </div>
       </LayoutPublico>
@@ -56,15 +69,37 @@ function PaginaGaleriaPublica() {
   }
 
   if (galeria.isError || !galeria.data) {
+    const bloqueada = galeria.error?.message.startsWith("Muitas tentativas") ?? false;
     return (
       <LayoutPublico fotografo="">
-        <div className="mx-auto max-w-xl p-4 py-16">
+        <div className="mx-auto max-w-xl p-4 py-20">
           <EstadoVazio
-            titulo={galeria.isError ? "Não foi possível abrir a galeria" : "Galeria não encontrada"}
+            titulo={
+              bloqueada
+                ? "Muitas senhas erradas"
+                : galeria.isError
+                  ? "Não foi possível abrir a galeria"
+                  : "Galeria não encontrada"
+            }
             descricao={
-              galeria.isError
-                ? galeria.error.message
-                : "Confira o link com o fotógrafo. A galeria pode ter sido encerrada."
+              bloqueada
+                ? "Por segurança, a galeria fica fechada por alguns minutos. Confira a senha com o fotógrafo e tente de novo."
+                : galeria.isError
+                  ? galeria.error.message
+                  : "Confira se o link está completo, do jeito que o fotógrafo enviou. A galeria pode ter sido encerrada."
+            }
+            acao={
+              galeria.isError ? (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    trocarSenha("");
+                    void galeria.refetch();
+                  }}
+                >
+                  Tentar de novo
+                </Button>
+              ) : undefined
             }
           />
         </div>
@@ -76,12 +111,9 @@ function PaginaGaleriaPublica() {
     return (
       <PedidoSenha
         galeria={galeria.data}
-        tentou={senha !== ""}
+        errada={galeria.data.senha_incorreta ?? senha !== ""}
         conferindo={galeria.isFetching}
-        aoEnviar={(s) => {
-          armazenamento.gravarSenha(slug, s);
-          setSenha(s);
-        }}
+        aoEnviar={trocarSenha}
       />
     );
   }
@@ -91,66 +123,80 @@ function PaginaGaleriaPublica() {
 
 function PedidoSenha({
   galeria,
-  tentou,
+  errada,
   conferindo,
   aoEnviar,
 }: {
   galeria: GaleriaPublica;
-  tentou: boolean;
+  errada: boolean;
   conferindo: boolean;
   aoEnviar: (senha: string) => void;
 }) {
   const [valor, setValor] = useState("");
+  const [vazia, setVazia] = useState(false);
+  const erro = vazia
+    ? "Digite a senha."
+    : errada && !conferindo
+      ? "Senha incorreta. Confira com o fotógrafo."
+      : undefined;
+
   return (
     <LayoutPublico fotografo={galeria.fotografo} marca={galeria.marca}>
-      <div className="mx-auto flex max-w-md flex-col gap-6 p-4 py-12">
-        {galeria.capa && (
-          <img
-            src={urlPrevia(galeria.capa)}
-            alt=""
-            className="aspect-[3/2] w-full rounded-xl border border-border object-cover"
-          />
-        )}
-        <Card className="space-y-5 p-6">
-          <div className="space-y-1">
-            <h1 className="text-heading-md">{galeria.titulo}</h1>
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <Lock className="size-4" aria-hidden="true" />
-              Galeria protegida. Digite a senha que o fotógrafo enviou.
-            </p>
-          </div>
-          <form
-            className="space-y-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              aoEnviar(valor.trim());
-            }}
-          >
-            <Campo rotulo="Senha" htmlFor="senha-galeria-publica">
-              <Input
-                id="senha-galeria-publica"
-                required
-                autoFocus
-                autoComplete="off"
-                value={valor}
-                onChange={(e) => setValor(e.target.value)}
-              />
-            </Campo>
-            {tentou && !conferindo && (
-              <p className="text-sm text-danger" role="alert">
-                Senha incorreta. Confira com o fotógrafo.
+      <div className="grid min-h-[calc(100dvh-3.5rem)] md:grid-cols-[3fr_2fr]">
+        <div className="relative h-[42vh] bg-muted md:h-auto">
+          {galeria.capa && (
+            <img
+              src={urlPrevia(galeria.capa)}
+              alt=""
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute inset-0 size-full object-cover"
+            />
+          )}
+        </div>
+        <div className="flex items-center px-6 py-10 md:px-12">
+          <div className="w-full max-w-sm space-y-8">
+            <div className="space-y-3">
+              <h1 className="text-heading-lg font-light md:text-heading-xl">{galeria.titulo}</h1>
+              <p className="flex items-start gap-2 text-sm text-muted-foreground">
+                <Lock className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                Galeria protegida. Digite a senha que o fotógrafo enviou junto com o link.
               </p>
-            )}
-            <Button
-              type="submit"
-              className={cn("w-full", CLASSE_BOTAO_MARCA)}
-              disabled={conferindo}
+            </div>
+            <form
+              className="space-y-4"
+              noValidate
+              onSubmit={(e) => {
+                e.preventDefault();
+                const s = valor.trim();
+                setVazia(s === "");
+                if (s) aoEnviar(s);
+              }}
             >
-              {conferindo && <Loader2 className="size-4 animate-spin" />}
-              Abrir galeria
-            </Button>
-          </form>
-        </Card>
+              <Campo rotulo="Senha" htmlFor="senha-galeria-publica" erro={erro}>
+                <Input
+                  id="senha-galeria-publica"
+                  autoFocus
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  value={valor}
+                  onChange={(e) => {
+                    setValor(e.target.value);
+                    setVazia(false);
+                  }}
+                  {...ariaErro("senha-galeria-publica", erro)}
+                />
+              </Campo>
+              <Button
+                type="submit"
+                className={cn("w-full", CLASSE_BOTAO_MARCA)}
+                disabled={conferindo}
+              >
+                {conferindo && <Loader2 className="size-4 animate-spin" />}
+                {conferindo ? "Conferindo..." : "Ver as fotos"}
+              </Button>
+            </form>
+          </div>
+        </div>
       </div>
     </LayoutPublico>
   );
@@ -161,6 +207,11 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   const fotos = useMemo(() => galeria.fotos ?? [], [galeria.fotos]);
   const precoFoto = galeria.preco_foto ?? 0;
   const precoPacote = galeria.preco_pacote ?? null;
+  const liberada = galeria.download_liberado ?? false;
+  const evento = galeria.tipo === "evento";
+  const buscaRosto = evento && (galeria.busca_rosto ?? false);
+  // Com o download liberado não há compra: a galeria é só para ver e baixar.
+  const vende = !liberada;
 
   // A seleção guardada pode ter foto que saiu da galeria: fica só a que existe.
   const [selecionadas, setSelecionadas] = useState<Set<string>>(() => {
@@ -169,11 +220,10 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
   });
   const [indice, setIndice] = useState<number | null>(null);
   const [modo, setModo] = useState<ModoCompra | null>(null);
-  const evento = galeria.tipo === "evento";
-  const buscaRosto = evento && (galeria.busca_rosto ?? false);
   // Resultado da busca por selfie, na ordem de semelhança; nulo = mostrar todas.
   const [encontradas, setEncontradas] = useState<FotoEncontrada[] | null>(null);
   const [buscandoSelfie, setBuscandoSelfie] = useState(false);
+  const [zip, setZip] = useState<{ feitas: number; total: number } | null>(null);
 
   const exibidas = useMemo(() => {
     if (!encontradas) return fotos;
@@ -189,6 +239,14 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
     armazenamento.gravarSelecao(galeria.slug, [...selecionadas]);
   }, [galeria.slug, selecionadas]);
 
+  // Fechar a aba no meio do ZIP perde o que já foi baixado.
+  useEffect(() => {
+    if (!zip) return;
+    const aviso = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", aviso);
+    return () => window.removeEventListener("beforeunload", aviso);
+  }, [zip]);
+
   function alternar(id: string) {
     setSelecionadas((atual) => {
       const nova = new Set(atual);
@@ -198,159 +256,177 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
     });
   }
 
+  async function baixarTodas() {
+    const arquivos = exibidas
+      .filter((f): f is FotoPublica & { original: string } => typeof f.original === "string")
+      .map((f) => ({ caminho: f.original, nome: f.nome, tamanho: f.tamanho ?? 0 }));
+    if (arquivos.length === 0) return;
+    try {
+      await baixarZip(arquivos, galeria.titulo, (feitas, total) => setZip({ feitas, total }));
+      toast.success(`${rotuloFotos(arquivos.length)} no ZIP. Confira a pasta de downloads.`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível montar o ZIP.");
+    } finally {
+      setZip(null);
+    }
+  }
+
   const fotosSelecionadas: FotoPublica[] = fotos.filter((f) => selecionadas.has(f.id));
   const qtd = fotosSelecionadas.length;
+  const meta = [
+    galeria.data_evento ? dataBR(galeria.data_evento) : null,
+    evento ? galeria.local || null : null,
+    rotuloFotos(fotos.length),
+  ].filter(Boolean);
 
-  const botaoSelecao = (
+  const acoesTopo = liberada ? (
+    fotos.length > 0 && (
+      <Button
+        size="sm"
+        className={CLASSE_BOTAO_MARCA}
+        disabled={zip !== null}
+        onClick={() => void baixarTodas()}
+      >
+        {zip ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+        {zip ? `${zip.feitas} de ${zip.total}` : "Baixar todas"}
+      </Button>
+    )
+  ) : (
     <Button
       size="sm"
-      variant={qtd > 0 ? "default" : "outline"}
+      variant={qtd > 0 ? "default" : "ghost"}
       className={cn(qtd > 0 && CLASSE_BOTAO_MARCA)}
       onClick={() => setModo("selecao")}
+      aria-label={qtd > 0 ? `Ver seleção com ${rotuloFotos(qtd)}` : "Ver seleção"}
     >
       <ShoppingBag className="size-4" />
-      {qtd > 0 ? `${qtd} · ${precoFoto > 0 ? brl(precoFoto * qtd) : "grátis"}` : "Seleção"}
+      {qtd > 0 ? rotuloFotos(qtd) : "Seleção"}
     </Button>
   );
 
   return (
-    <LayoutPublico fotografo={galeria.fotografo} marca={galeria.marca} acoes={botaoSelecao}>
-      {/* Capa: escurecida embaixo para o título ler sobre a foto. */}
-      <section className="relative h-[45vh] min-h-64 w-full overflow-hidden bg-muted">
-        {galeria.capa && (
-          <img
-            src={urlPrevia(galeria.capa)}
-            alt=""
-            className="absolute inset-0 size-full object-cover"
-            onContextMenu={(e) => e.preventDefault()}
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-        <div className="absolute inset-x-0 bottom-0 mx-auto max-w-7xl p-4 pb-8 text-white md:p-8">
-          <h1 className="text-heading-xl md:text-display-lg">{galeria.titulo}</h1>
-          <p className="mt-2 text-sm text-white/80">
-            {[
-              evento ? galeria.categoria || null : null,
-              galeria.data_evento ? dataBR(galeria.data_evento) : null,
-              evento ? galeria.local || null : null,
-              rotuloFotos(fotos.length),
-              galeria.fotografo || null,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-          {evento && (
-            <Link to="/eventos" className="mt-3 inline-block text-sm text-white/90 underline">
-              Ver outros eventos
-            </Link>
+    <LayoutPublico fotografo={galeria.fotografo} marca={galeria.marca} acoes={acoesTopo}>
+      {/* Folha de rosto: a capa inteira e o título embaixo, como num livro de fotos. */}
+      <section>
+        <div className="relative h-[58vh] min-h-72 w-full bg-muted md:h-[72vh]">
+          {galeria.capa && (
+            <img
+              src={urlPrevia(galeria.capa)}
+              alt=""
+              fetchPriority="high"
+              onContextMenu={(e) => e.preventDefault()}
+              className="absolute inset-0 size-full object-cover"
+            />
           )}
         </div>
-      </section>
-
-      <div className="mx-auto max-w-7xl space-y-6 p-4 md:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="max-w-2xl space-y-1">
+        <div className="mx-auto grid max-w-[96rem] gap-6 px-4 pb-10 pt-8 md:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] md:gap-16 md:px-8 md:pb-14 md:pt-12">
+          <div className="space-y-3">
+            {evento && galeria.categoria && (
+              <Link to="/eventos" className="text-sm text-muted-foreground hover:text-foreground">
+                {galeria.categoria}
+              </Link>
+            )}
+            <h1 className="text-heading-xl font-light md:text-display-xl md:font-light">
+              {galeria.titulo}
+            </h1>
+            <p className="text-sm text-muted-foreground">{meta.join("  ·  ")}</p>
+          </div>
+          <div className="space-y-5 md:pt-3">
             {galeria.descricao && (
-              <p className="whitespace-pre-line text-body-md text-foreground">
+              <p className="max-w-prose whitespace-pre-line text-body-md text-foreground">
                 {galeria.descricao}
               </p>
             )}
-            <p className="text-sm text-muted-foreground">
-              {precoFoto > 0
-                ? `Cada foto sai por ${brl(precoFoto)}. Toque no círculo para escolher; o download em alta resolução é liberado após o pagamento.`
-                : "Download gratuito. Escolha as fotos e receba os arquivos em alta resolução."}
+            <p className="max-w-prose text-sm text-muted-foreground">
+              {liberada
+                ? "As fotos estão liberadas em alta resolução, sem marca d'água. Baixe uma a uma na foto ampliada ou todas de uma vez."
+                : precoFoto > 0
+                  ? `Cada foto sai por ${brl(precoFoto)}. Toque no círculo para escolher. O download em alta resolução é liberado depois do pagamento.`
+                  : "Download gratuito. Escolha as fotos e receba os arquivos em alta resolução."}
             </p>
-          </div>
-          {precoPacote !== null && fotos.length > 0 && (
-            <Button className={CLASSE_BOTAO_MARCA} onClick={() => setModo("pacote")}>
-              Todas as {fotos.length} fotos por {brl(precoPacote)}
-            </Button>
-          )}
-        </div>
-
-        {buscaRosto && fotos.length > 0 && (
-          <Card className="flex flex-wrap items-center justify-between gap-4 p-4">
-            <div className="flex items-start gap-3">
-              <ScanFace className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden="true" />
-              <div>
-                <p className="text-label-md text-foreground">
-                  {encontradas
-                    ? encontradas.length > 0
-                      ? `Encontramos ${rotuloFotos(encontradas.length)} com você`
-                      : "Não encontramos você nas fotos"
-                    : "Encontre as suas fotos com uma selfie"}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {encontradas
-                    ? encontradas.length > 0
-                      ? talvez.size > 0
-                        ? "Da mais parecida para a menos. As marcadas com “Talvez seja você” são parecidas: confira antes de escolher."
-                        : "Da mais parecida para a menos. Confira e escolha as suas."
-                      : "Tente outra selfie, de frente e com boa luz, ou veja todas as fotos."
-                    : "Em vez de olhar todas as fotos, mande uma selfie e veja só as suas."}
-                </p>
-              </div>
-            </div>
             <div className="flex flex-wrap gap-2">
-              {encontradas && (
-                <Button variant="outline" onClick={() => setEncontradas(null)}>
-                  Ver todas as fotos
+              {vende && precoPacote !== null && fotos.length > 0 && (
+                <Button className={CLASSE_BOTAO_MARCA} onClick={() => setModo("pacote")}>
+                  Todas as {fotos.length} fotos por {brl(precoPacote)}
                 </Button>
               )}
-              <Button className={CLASSE_BOTAO_MARCA} onClick={() => setBuscandoSelfie(true)}>
-                <ScanFace className="size-4" />
-                {encontradas ? "Nova selfie" : "Buscar por selfie"}
-              </Button>
+              {buscaRosto && fotos.length > 0 && (
+                <Button variant="outline" onClick={() => setBuscandoSelfie(true)}>
+                  <ScanFace className="size-4" />
+                  {encontradas ? "Nova selfie" : "Achar minhas fotos com uma selfie"}
+                </Button>
+              )}
+              {evento && (
+                <Button asChild variant="ghost">
+                  <Link to="/eventos">Outros eventos</Link>
+                </Button>
+              )}
             </div>
-          </Card>
-        )}
+          </div>
+        </div>
+      </section>
 
+      {encontradas && (
+        <div className="mx-auto flex max-w-[96rem] flex-wrap items-center justify-between gap-3 px-4 pb-6 md:px-8">
+          <p className="text-sm text-foreground">
+            {encontradas.length > 0
+              ? `${rotuloFotos(encontradas.length)} com você, da mais parecida para a menos.${talvez.size > 0 ? " Confira as marcadas com “Talvez seja você”." : ""}`
+              : "Não achamos você nas fotos. Tente outra selfie, de frente e com boa luz."}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setEncontradas(null)}>
+            Ver todas as fotos
+          </Button>
+        </div>
+      )}
+
+      <div className="px-1 pb-16 md:px-2">
         {fotos.length === 0 ? (
-          <EstadoVazio
-            titulo="As fotos ainda não chegaram"
-            descricao="O fotógrafo ainda está preparando esta galeria. Volte mais tarde."
-          />
-        ) : exibidas.length === 0 ? null : (
-          <ul className="columns-2 gap-3 md:columns-3 lg:columns-4 [&>li]:mb-3">
-            {exibidas.map((f, i) => {
+          <div className="mx-auto max-w-xl px-4">
+            <EstadoVazio
+              titulo="As fotos ainda não chegaram"
+              descricao="O fotógrafo ainda está preparando esta galeria. Volte mais tarde pelo mesmo link."
+            />
+          </div>
+        ) : (
+          <GradeJustificada
+            itens={exibidas}
+            renderizar={(f, i) => {
               const marcada = selecionadas.has(f.id);
               return (
-                <li key={f.id} className="group relative break-inside-avoid">
+                <div className="group size-full">
                   <button
                     type="button"
-                    className="block w-full cursor-zoom-in overflow-hidden rounded-lg bg-muted"
+                    className="block size-full cursor-zoom-in overflow-hidden bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     onClick={() => setIndice(i)}
                     aria-label={`Ampliar ${f.nome}`}
                   >
-                    <img
+                    <Miniatura
                       src={urlPrevia(f.miniatura)}
                       alt={f.nome}
                       loading="lazy"
-                      width={f.largura}
-                      height={f.altura}
+                      decoding="async"
                       draggable={false}
                       onContextMenu={(e) => e.preventDefault()}
-                      className={cn(
-                        "h-auto w-full select-none transition-transform duration-300 group-hover:scale-[1.02]",
-                        marcada && "opacity-90",
-                      )}
+                      className="size-full select-none object-cover"
                     />
                   </button>
-                  <button
-                    type="button"
-                    role="checkbox"
-                    aria-checked={marcada}
-                    aria-label={`${marcada ? "Tirar" : "Escolher"} ${f.nome}`}
-                    onClick={() => alternar(f.id)}
-                    className={cn(
-                      "absolute right-2 top-2 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 transition-colors",
-                      marcada
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-white/90 bg-black/25 text-transparent hover:bg-black/40",
-                    )}
-                  >
-                    <Check className="size-4" strokeWidth={2.5} />
-                  </button>
+                  {vende && (
+                    <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={marcada}
+                      aria-label={`${marcada ? "Tirar" : "Escolher"} ${f.nome}`}
+                      onClick={() => alternar(f.id)}
+                      className={cn(
+                        "absolute right-2 top-2 flex size-8 cursor-pointer items-center justify-center rounded-full border-2 transition-opacity focus-visible:opacity-100",
+                        marcada
+                          ? "border-primary bg-primary text-primary-foreground opacity-100"
+                          : "border-white bg-black/20 text-transparent opacity-0 group-hover:opacity-100 [@media(hover:none)]:opacity-100",
+                      )}
+                    >
+                      <Check className="size-4" strokeWidth={2.5} />
+                    </button>
+                  )}
                   {talvez.has(f.id) && (
                     <Badge
                       variant="secondary"
@@ -360,23 +436,25 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
                     </Badge>
                   )}
                   {marcada && (
-                    <span className="pointer-events-none absolute inset-0 rounded-lg ring-4 ring-primary ring-inset" />
+                    <span className="pointer-events-none absolute inset-0 ring-4 ring-primary ring-inset" />
                   )}
-                </li>
+                </div>
               );
-            })}
-          </ul>
+            }}
+          />
         )}
       </div>
 
-      {qtd > 0 && (
-        <div className="sticky bottom-4 z-20 mx-auto flex w-fit max-w-[calc(100%-2rem)] items-center gap-3 rounded-full border border-border bg-card p-1.5 pl-5 shadow-lg">
-          <span className="text-sm text-foreground">
-            {rotuloFotos(qtd)} · {precoFoto > 0 ? brl(precoFoto * qtd) : "grátis"}
-          </span>
-          <Button size="sm" className={CLASSE_BOTAO_MARCA} onClick={() => setModo("selecao")}>
-            Continuar
-          </Button>
+      {vende && qtd > 0 && (
+        <div className="pointer-events-none sticky bottom-4 z-20 flex justify-center px-4 pb-[env(safe-area-inset-bottom)]">
+          <div className="pointer-events-auto flex items-center gap-3 rounded-full border border-border bg-card p-1.5 pl-5 shadow-lg">
+            <span className="text-sm tabular-nums text-foreground">
+              {rotuloFotos(qtd)} · {precoFoto > 0 ? brl(precoFoto * qtd) : "grátis"}
+            </span>
+            <Button size="sm" className={CLASSE_BOTAO_MARCA} onClick={() => setModo("selecao")}>
+              Continuar
+            </Button>
+          </div>
         </div>
       )}
 
@@ -387,7 +465,7 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
         aoFechar={() => setIndice(null)}
         selecionadas={selecionadas}
         aoAlternar={alternar}
-        podeSelecionar
+        podeSelecionar={vende}
         whatsappRemocao={evento ? (galeria.contato_whatsapp ?? "") : ""}
       />
 
@@ -404,19 +482,21 @@ function Vitrine({ galeria, senha }: { galeria: GaleriaPublica; senha: string })
         />
       )}
 
-      <Checkout
-        galeria={galeria}
-        senha={senha}
-        modo={modo}
-        aoFechar={() => setModo(null)}
-        fotosSelecionadas={fotosSelecionadas}
-        aoRemover={alternar}
-        aoConcluir={(codigo) => {
-          setSelecionadas(new Set());
-          armazenamento.gravarSelecao(galeria.slug, []);
-          void navigate({ to: "/pedido/$codigo", params: { codigo } });
-        }}
-      />
+      {vende && (
+        <Checkout
+          galeria={galeria}
+          senha={senha}
+          modo={modo}
+          aoFechar={() => setModo(null)}
+          fotosSelecionadas={fotosSelecionadas}
+          aoRemover={alternar}
+          aoConcluir={(codigo) => {
+            setSelecionadas(new Set());
+            armazenamento.gravarSelecao(galeria.slug, []);
+            void navigate({ to: "/pedido/$codigo", params: { codigo } });
+          }}
+        />
+      )}
     </LayoutPublico>
   );
 }

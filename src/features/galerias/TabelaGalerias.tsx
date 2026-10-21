@@ -6,6 +6,7 @@ import { Tabela, type ColunaTabela, type SelecaoTabela } from "@/components/Tabe
 import { brl, dataBR } from "@/lib/format";
 import { urlPrevia } from "@/lib/fotos";
 import { ROTULO_STATUS_GALERIA, type GaleriaComContagem, type StatusGaleria } from "./api";
+import { Miniatura } from "@/components/Miniatura";
 
 export const VARIANTE_STATUS_GALERIA = {
   rascunho: "secondary",
@@ -14,6 +15,10 @@ export const VARIANTE_STATUS_GALERIA = {
 } as const satisfies Record<StatusGaleria, string>;
 
 const contar = (l: { count: number }[]) => l[0]?.count ?? 0;
+
+/** Capa escolhida ou, sem escolha, a primeira foto (a mesma regra da galeria). */
+const capaDa = (g: GaleriaComContagem) =>
+  g.capa?.caminho_miniatura ?? g.primeira[0]?.caminho_miniatura ?? null;
 
 export function TabelaGalerias({
   galerias,
@@ -27,7 +32,7 @@ export function TabelaGalerias({
       chave: "titulo",
       titulo: "Galeria",
       ordenavel: true,
-      classe: "max-w-[18rem] sm:max-w-md",
+      classe: "max-w-[13rem] sm:max-w-md",
       renderizar: (g) => (
         <Link
           to="/galerias/$id"
@@ -35,9 +40,9 @@ export function TabelaGalerias({
           className="flex items-center gap-3 hover:underline"
         >
           <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-md border border-border bg-muted">
-            {g.capa ? (
-              <img
-                src={urlPrevia(g.capa.caminho_miniatura)}
+            {capaDa(g) ? (
+              <Miniatura
+                src={urlPrevia(capaDa(g) ?? "")}
                 alt=""
                 loading="lazy"
                 className="size-full object-cover"

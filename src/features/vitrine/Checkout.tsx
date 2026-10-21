@@ -13,10 +13,18 @@ import {
 } from "@/components/ui/sheet";
 import { Campo } from "@/components/Campo";
 import { brl } from "@/lib/format";
+import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { CLASSE_BOTAO_MARCA } from "@/lib/marca";
 import { cn } from "@/lib/utils";
-import { rotuloFotos, urlPrevia } from "@/lib/fotos";
-import { useCriarPedido, type FotoPublica, type GaleriaPublica } from "./api";
+import { ariaErro, errosPorCampo, focarPrimeiroErro, type ErrosDeCampo } from "@/lib/validacao";
+import {
+  esquemaComprador,
+  useCriarPedido,
+  type DadosComprador,
+  type FotoPublica,
+  type GaleriaPublica,
+} from "./api";
+import { Miniatura } from "@/components/Miniatura";
 
 export type ModoCompra = "selecao" | "pacote";
 
@@ -42,6 +50,7 @@ export function Checkout({
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
+  const [erros, setErros] = useState<ErrosDeCampo<DadosComprador>>({});
 
   const precoFoto = galeria.preco_foto ?? 0;
   const pacote = modo === "pacote";
@@ -51,6 +60,21 @@ export function Checkout({
 
   function finalizar(e: React.FormEvent) {
     e.preventDefault();
+    const conferido = esquemaComprador.safeParse({ nome, email, telefone });
+    if (!conferido.success) {
+      setErros(errosPorCampo(conferido.error));
+      focarPrimeiroErro(
+        [
+          ["nome", "nome-comprador"],
+          ["email", "email-comprador"],
+          ["telefone", "telefone-comprador"],
+        ]
+          .filter(([campo]) => conferido.error.issues.some((i) => i.path[0] === campo))
+          .map(([, id]) => id ?? ""),
+      );
+      return;
+    }
+    setErros({});
     criar.mutate(
       {
         slug: galeria.slug,
@@ -69,7 +93,7 @@ export function Checkout({
   return (
     <Sheet open={modo !== null} onOpenChange={(v) => !v && !criar.isPending && aoFechar()}>
       <SheetContent className="flex w-full flex-col gap-0 overflow-y-auto p-0 sm:max-w-md">
-        <form onSubmit={finalizar} className="flex min-h-full flex-col">
+        <form onSubmit={finalizar} noValidate className="flex min-h-full flex-col">
           <SheetHeader className="border-b border-border p-5 text-left">
             <SheetTitle>{pacote ? "Todas as fotos" : "Sua seleção"}</SheetTitle>
             <SheetDescription>
@@ -87,7 +111,7 @@ export function Checkout({
                 <ul className="grid grid-cols-4 gap-2">
                   {fotosSelecionadas.map((f) => (
                     <li key={f.id} className="relative">
-                      <img
+                      <Miniatura
                         src={urlPrevia(f.miniatura)}
                         alt={f.nome}
                         className="aspect-square w-full rounded-md border border-border object-cover"
@@ -115,40 +139,48 @@ export function Checkout({
             </div>
 
             <div className="space-y-4">
-              <Campo rotulo="Seu nome" htmlFor="nome-comprador">
+              <Campo rotulo="Seu nome" htmlFor="nome-comprador" erro={erros.nome}>
                 <Input
                   id="nome-comprador"
-                  required
-                  minLength={2}
                   maxLength={120}
                   autoComplete="name"
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
+                  {...ariaErro("nome-comprador", erros.nome)}
                 />
               </Campo>
               <Campo
                 rotulo="E-mail"
                 htmlFor="email-comprador"
                 dica="O fotógrafo usa este e-mail para falar com você sobre o pedido."
+                erro={erros.email}
               >
                 <Input
                   id="email-comprador"
                   type="email"
-                  required
                   maxLength={200}
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  {...ariaErro("email-comprador", erros.email)}
                 />
               </Campo>
-              <Campo rotulo="WhatsApp (opcional)" htmlFor="telefone-comprador">
+              <Campo
+                rotulo="WhatsApp (opcional)"
+                htmlFor="telefone-comprador"
+                dica="Com DDD. Ajuda o fotógrafo a confirmar o pagamento mais rápido."
+                erro={erros.telefone}
+              >
                 <Input
                   id="telefone-comprador"
+                  type="tel"
                   inputMode="tel"
                   maxLength={30}
                   autoComplete="tel"
+                  placeholder="11 91234-5678"
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
+                  {...ariaErro("telefone-comprador", erros.telefone)}
                 />
               </Campo>
             </div>

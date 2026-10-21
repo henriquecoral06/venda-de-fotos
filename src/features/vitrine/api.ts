@@ -17,6 +17,10 @@ const fotoPublica = z.object({
   miniatura: z.string(),
   largura: z.number(),
   altura: z.number(),
+  // Opcionais: banco sem a migration `revisao_seguranca` devolve sem eles.
+  tamanho: z.number().optional(),
+  /** Caminho do original: só vem quando o fotógrafo liberou o download. */
+  original: z.string().nullable().optional(),
 });
 
 // Opcional: banco ainda sem a migration `marca_da_loja` devolve sem ela.
@@ -46,6 +50,8 @@ const galeriaPublica = z.object({
   capa: z.string().nullable(),
   total_fotos: z.number(),
   liberada: z.boolean(),
+  senha_incorreta: z.boolean().optional(),
+  download_liberado: z.boolean().optional(),
   preco_foto: z.number().optional(),
   preco_pacote: z.number().nullable().optional(),
   fotos: z.array(fotoPublica).optional(),
@@ -73,6 +79,7 @@ const pedidoPublico = z.object({
       previa: z.string(),
       miniatura: z.string(),
       preco: z.number(),
+      tamanho: z.number().optional(),
       original: z.string().nullable(),
     }),
   ),
@@ -113,11 +120,18 @@ function ler<T>(esquema: z.ZodType<T>, dado: unknown): T | null {
   return r.data;
 }
 
-/** Nulo = não existe ou não está publicada. */
+const SENHA_INCORRETA = "Senha da galeria incorreta.";
+
+/**
+ * Nulo = não existe ou não está publicada. Cada senha errada conta no limite
+ * de tentativas do banco: a consulta não se refaz sozinha ao voltar à aba.
+ */
 export function useGaleriaPublica(slug: string, senha: string) {
   return useQuery({
     queryKey: [...CHAVE_VITRINE, "galeria", slug, senha],
     placeholderData: (anterior) => anterior,
+    refetchOnWindowFocus: false,
+    retry: (falhas, erro) => falhas < 1 && !erro.message.startsWith("Muitas tentativas"),
     queryFn: async (): Promise<GaleriaPublica | null> => {
       const { data, error } = await supabase.rpc("galeria_publica", { _slug: slug, _senha: senha });
       if (error) throw new Error(error.message);
@@ -164,6 +178,7 @@ export async function buscarFotosPorRosto(
     _rosto: rosto,
   });
   if (error) throw new Error(error.message);
+  if (data === null) throw new Error(SENHA_INCORRETA);
   return (ler(resultadoBusca, data) ?? []).map((r) => ({
     id: r.id,
     provavel: r.distancia < DISTANCIA_PROVAVEL,
@@ -173,7 +188,13 @@ export async function buscarFotosPorRosto(
 export const esquemaComprador = z.object({
   nome: z.string().trim().min(2, "Informe o seu nome.").max(120, "Nome longo demais."),
   email: z.string().trim().email("Informe um e-mail válido."),
-  telefone: z.string().trim().max(30, "Telefone inválido."),
+  telefone: z
+    .string()
+    .trim()
+    .refine(
+      (t) => t === "" || (/^[\d()+\s.-]+$/.test(t) && t.replace(/\D/g, "").length >= 10),
+      "Informe o WhatsApp com DDD (ex.: 11 91234-5678) ou deixe em branco.",
+    ),
 });
 
 export type DadosComprador = z.infer<typeof esquemaComprador>;
@@ -205,6 +226,7 @@ export function useCriarPedido() {
         _pacote_completo: pacoteCompleto,
       });
       if (error) throw new Error(error.message);
+      if (data === null) throw new Error(SENHA_INCORRETA);
       return data;
     },
   });

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Campo } from "@/components/Campo";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
@@ -75,6 +76,7 @@ function FormularioLoja({
   const [dados, setDados] = useState<DadosLoja>({
     nome_exibicao: config.nome_exibicao,
     texto_marca_dagua: config.texto_marca_dagua,
+    marca_dagua_ativa: config.marca_dagua_ativa,
     chave_pix: config.chave_pix,
     instrucoes_pagamento: config.instrucoes_pagamento,
     whatsapp: config.whatsapp,
@@ -82,7 +84,7 @@ function FormularioLoja({
     cor_primaria: config.cor_primaria,
     cor_secundaria: config.cor_secundaria,
   });
-  const campo = (chave: keyof DadosLoja) => ({
+  const campo = (chave: Exclude<keyof DadosLoja, "marca_dagua_ativa">) => ({
     value: dados[chave],
     disabled: !podeEditar || salvar.isPending,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -121,13 +123,32 @@ function FormularioLoja({
         >
           <Input id="nome-loja" maxLength={120} {...campo("nome_exibicao")} />
         </Campo>
-        <Campo
-          rotulo="Texto da marca d'água"
-          htmlFor="marca-loja"
-          dica={`Vale para as próximas fotos enviadas. Agora: “${marcaAtual}”.`}
-        >
-          <Input id="marca-loja" maxLength={60} {...campo("texto_marca_dagua")} />
-        </Campo>
+        <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+          <div className="space-y-0.5">
+            <label htmlFor="marca-ativa-loja" className="text-label-md text-foreground">
+              Marca d'água nas prévias
+            </label>
+            <p className="text-caption text-muted-foreground">
+              Protege as fotos que o cliente ainda não comprou. Vale para as próximas fotos
+              enviadas; as que já estão na galeria continuam como estão.
+            </p>
+          </div>
+          <Switch
+            id="marca-ativa-loja"
+            checked={dados.marca_dagua_ativa}
+            disabled={!podeEditar || salvar.isPending}
+            onCheckedChange={(v) => setDados((d) => ({ ...d, marca_dagua_ativa: v }))}
+          />
+        </div>
+        {dados.marca_dagua_ativa && (
+          <Campo
+            rotulo="Texto da marca d'água"
+            htmlFor="marca-loja"
+            dica={`Em branco, vale o nome exibido. Agora: “${marcaAtual ?? ""}”.`}
+          >
+            <Input id="marca-loja" maxLength={60} {...campo("texto_marca_dagua")} />
+          </Campo>
+        )}
       </Card>
 
       <Card className="space-y-5 p-5">
@@ -138,6 +159,13 @@ function FormularioLoja({
             Pedidos para liberar o download.
           </p>
         </div>
+        {!dados.chave_pix.trim() && (
+          <div className="flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            Sem chave Pix, o cliente faz o pedido mas não vê como pagar: ele recebe só o aviso de
+            que você vai entrar em contato.
+          </div>
+        )}
         <Campo rotulo="Chave Pix" htmlFor="pix-loja">
           <Input id="pix-loja" maxLength={140} {...campo("chave_pix")} />
         </Campo>

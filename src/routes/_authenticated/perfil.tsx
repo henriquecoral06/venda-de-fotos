@@ -7,7 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/PageHeader";
+import { EstadoVazio, PageHeader } from "@/components/PageHeader";
+import { SkeletonFormulario } from "@/components/Skeletons";
 import { Campo } from "@/components/Campo";
 import { usePerfil, type Perfil } from "@/features/perfil/api";
 import { BRAND } from "@/config/brand";
@@ -18,14 +19,28 @@ export const Route = createFileRoute("/_authenticated/perfil")({
 });
 
 function PaginaPerfil() {
-  const { data: ctx } = usePerfil();
-  const perfil = ctx?.perfil ?? null;
+  const contexto = usePerfil();
+  const perfil = contexto.data?.perfil ?? null;
 
   return (
     <div className="mx-auto max-w-xl space-y-6 p-4 md:p-8">
       <PageHeader titulo="Meu perfil" descricao="Seus dados de identificação na equipe." />
-      {/* `key`: o formulário recomeça do banco quando o perfil salvo muda. */}
-      {perfil && <FormularioPerfil key={`${perfil.id}:${perfil.nome}`} perfil={perfil} />}
+      {contexto.isPending ? (
+        <SkeletonFormulario campos={2} />
+      ) : contexto.isError || !perfil ? (
+        <EstadoVazio
+          titulo="Não foi possível carregar o seu perfil"
+          descricao={contexto.error?.message ?? "Saia e entre de novo para recriar o perfil."}
+          acao={
+            <Button variant="outline" onClick={() => void contexto.refetch()}>
+              Tentar de novo
+            </Button>
+          }
+        />
+      ) : (
+        /* `key`: o formulário recomeça do banco quando o perfil salvo muda. */
+        <FormularioPerfil key={`${perfil.id}:${perfil.nome}`} perfil={perfil} />
+      )}
     </div>
   );
 }

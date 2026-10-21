@@ -60,7 +60,9 @@ begin
    where tgrelid = 'auth.users'::regclass and tgname = 'on_auth_user_created';
   if n <> 1 then raise exception 'REPARO FALHOU: trigger on_auth_user_created não voltou'; end if;
 
-  -- 2. contas órfãs: a mais antiga vira dona, a seguinte membro
+  -- 2. contas órfãs: a mais antiga vira dona; a seguinte ganha perfil e fica
+  --    fora da equipe (a organização nasce com o cadastro fechado), até o dono
+  --    readmitir em Equipe
   select count(*) into n from public.organizacoes;
   if n <> 1 then raise exception 'REPARO FALHOU: % organizações depois do reparo, esperado 1', n; end if;
   select id into org_id from public.organizacoes;
@@ -74,9 +76,12 @@ begin
 
   select nome into txt from public.perfis where id = u_nova;
   if txt is distinct from 'nova' then raise exception 'REPARO FALHOU: nome sem metadata veio %', txt; end if;
-  select papel into papel_atual from public.organizacao_membros where user_id = u_nova and organizacao_id = org_id;
-  if papel_atual is distinct from 'membro' then
-    raise exception 'REPARO FALHOU: segunda conta não entrou como membro (papel %)', papel_atual;
+  select count(*) into n from public.organizacao_membros where user_id = u_nova;
+  if n <> 0 then
+    raise exception 'REPARO FALHOU: segunda conta entrou na equipe com o cadastro fechado';
+  end if;
+  if (select cadastro_aberto from public.organizacoes where id = org_id) then
+    raise exception 'REPARO FALHOU: organização criada pelo reparo nasceu com o cadastro aberto';
   end if;
 
   -- 3. privilégios de volta à lista da fundação
@@ -89,6 +94,10 @@ begin
      or has_table_privilege('anon', 'public.landing_pages', 'SELECT')
      or has_table_privilege('anon', 'public.landing_segredos', 'SELECT')
      or has_table_privilege('authenticated', 'public.landing_segredos', 'SELECT')
+     or has_table_privilege('anon', 'public.limites_acesso', 'SELECT')
+     or has_table_privilege('authenticated', 'public.limites_acesso', 'SELECT')
+     or has_function_privilege('anon', 'public.registrar_acesso(text, text)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.galeria_pelo_link(text)', 'EXECUTE')
      or has_table_privilege('anon', 'public.organizacoes', 'SELECT') then
     raise exception 'REPARO FALHOU: anon continua lendo tabelas';
   end if;
@@ -107,6 +116,7 @@ begin
   end if;
   if not has_column_privilege('authenticated', 'public.perfis', 'nome', 'UPDATE')
      or not has_column_privilege('authenticated', 'public.organizacoes', 'cadastro_aberto', 'UPDATE')
+     or not has_column_privilege('authenticated', 'public.configuracoes_loja', 'marca_dagua_ativa', 'UPDATE')
      or not has_table_privilege('authenticated', 'public.perfis', 'SELECT')
      or not has_table_privilege('authenticated', 'public.organizacao_membros', 'SELECT') then
     raise exception 'REPARO FALHOU: authenticated perdeu privilégio da fundação em perfis/organizacoes';
@@ -172,7 +182,9 @@ begin
     raise exception 'REPARO FALHOU: segunda chamada ainda consertou algo';
   end if;
 
-  -- 5. com o trigger de volta, conta nova segue o fluxo normal (entra como membro)
+  -- 5. com o trigger de volta, conta nova segue o fluxo normal: com o cadastro
+  --    aberto pelo dono, entra como membro
+  update public.organizacoes set cadastro_aberto = true where id = org_id;
   insert into auth.users (id, email, raw_user_meta_data) values
     (u_depois, 'depois@exemplo.test', jsonb_build_object('nome', 'Duda Depois'));
   select papel into papel_atual from public.organizacao_membros where user_id = u_depois and organizacao_id = org_id;

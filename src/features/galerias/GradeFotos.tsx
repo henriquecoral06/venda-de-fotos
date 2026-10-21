@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { urlPrevia } from "@/lib/fotos";
 import type { Foto } from "./api";
+import { Miniatura } from "@/components/Miniatura";
 
 /** Grade das fotos enviadas, com as ações de capa e exclusão no canto. */
 export function GradeFotos({
@@ -25,7 +26,7 @@ export function GradeFotos({
             key={foto.id}
             className="group relative overflow-hidden rounded-lg border border-border bg-muted"
           >
-            <img
+            <Miniatura
               src={urlPrevia(foto.caminho_miniatura)}
               alt={foto.nome_arquivo}
               loading="lazy"
