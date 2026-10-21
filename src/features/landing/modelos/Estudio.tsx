@@ -43,6 +43,9 @@ export function ModeloEstudio({ d }: { d: DadosLanding }) {
           <span className="text-lg font-semibold">{c.nome}</span>
         )}
         <nav className="flex items-center gap-6 text-sm">
+          <a href="#sobre" className="hidden opacity-80 hover:opacity-100 md:inline">
+            Sobre
+          </a>
           <a href="#servicos" className="hidden opacity-80 hover:opacity-100 md:inline">
             Serviços
           </a>
@@ -97,16 +100,36 @@ export function ModeloEstudio({ d }: { d: DadosLanding }) {
         </div>
       </section>
 
+      <section id="sobre" className="mx-auto max-w-7xl px-5 pt-24 md:px-8">
+        <div
+          className={`${bloco} grid items-center gap-8 p-5 md:grid-cols-[1fr_1.15fr] md:gap-12 md:p-8`}
+        >
+          <Foto
+            src={fotos.sobre ?? fotoDa(galeria, 2)}
+            className="aspect-[4/5] w-full rounded-2xl"
+          />
+          <div className="space-y-5 md:pr-6">
+            <span className={chip}>Prazer, {c.nome}</span>
+            <h2 className="text-4xl font-semibold tracking-tight md:text-5xl">{c.sobre_titulo}</h2>
+            <p className="max-w-xl whitespace-pre-line leading-relaxed opacity-75">
+              {c.sobre_texto}
+            </p>
+            <LinkCta href={d.linkCta} aoClicar={d.aoClicarCta} className={pilula}>
+              {c.cta_texto} <ArrowUpRight className="size-4" />
+            </LinkCta>
+          </div>
+        </div>
+      </section>
+
       {c.servicos.length > 0 && (
         <section id="servicos" className="mx-auto max-w-7xl px-5 py-24 md:px-8">
           <div className="mb-10 text-center">
             <h2 className="text-4xl font-semibold tracking-tight md:text-5xl">
-              {c.sobre_titulo}{" "}
+              Serviços{" "}
               <span style={FONTE_ITALICA} className="font-normal opacity-60">
                 e o que eu faço
               </span>
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-sm opacity-70">{c.sobre_texto}</p>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             {c.servicos.map((s, i) => (
@@ -138,7 +161,10 @@ export function ModeloEstudio({ d }: { d: DadosLanding }) {
         </section>
       )}
 
-      <section id="eventos" className="mx-auto max-w-7xl px-5 pb-24 md:px-8">
+      <section
+        id="eventos"
+        className={`mx-auto max-w-7xl px-5 pb-24 md:px-8 ${c.servicos.length === 0 ? "pt-24" : ""}`}
+      >
         <div className="mb-10 flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-4xl font-semibold tracking-tight md:text-5xl">
