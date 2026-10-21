@@ -35,6 +35,7 @@ declare
   cod_pacote text;
   j jsonb;
   gal_evento uuid;
+  lp uuid;
   foto_evento uuid;
   papel_atual public.papel_organizacao;
   aberto boolean;
@@ -544,6 +545,75 @@ begin
     raise exception 'RLS FALHOU: galeria com pedido foi excluída';
   exception when foreign_key_violation then null;
   end;
+
+  -- 29. landing page: segredo nunca lido, página pública sem o token, envio
+  --     para a API de Conversões só com tudo configurado
+  insert into public.landing_pages (user_id, organizacao_id, titulo, slug, modelo, publicada,
+                                    meta_pixel_id, meta_capi_ativa)
+  values (u_dono, org_id, 'Anúncio', 'rls-landing', 'editorial', true, '123456789', true)
+  returning id into lp;
+  perform public.definir_token_capi(lp, 'TOKEN-SECRETO-RLS');
+  if not public.landing_tem_token_capi(lp) then
+    raise exception 'RLS FALHOU: token da API de Conversões não ficou salvo';
+  end if;
+  begin
+    perform 1 from public.landing_segredos;
+    raise exception 'RLS FALHOU: conta logada leu landing_segredos';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.landing_pages (user_id, titulo, slug, modelo)
+    values (u_dono, 'Errada', 'rls-landing-errada', 'nao-existe');
+    raise exception 'RLS FALHOU: landing com modelo inexistente';
+  exception when check_violation then null;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  begin
+    perform 1 from public.landing_pages;
+    raise exception 'RLS FALHOU: visitante leu landing_pages';
+  exception when insufficient_privilege then null;
+  end;
+  j := public.landing_publica('rls-landing');
+  if j is null or j ->> 'modelo' <> 'editorial' or not (j -> 'rastreamento' ->> 'meta_capi')::boolean
+     or jsonb_typeof(j -> 'eventos') <> 'array' then
+    raise exception 'RLS FALHOU: landing pública veio errada: %', j;
+  end if;
+  if j::text like '%TOKEN-SECRETO-RLS%' then
+    raise exception 'RLS FALHOU: landing pública expôs o token';
+  end if;
+  if not exists (select 1 from jsonb_array_elements(j -> 'eventos') e where e ->> 'slug' = 'rls-evento') then
+    raise exception 'RLS FALHOU: landing sem a seção de eventos: %', j -> 'eventos';
+  end if;
+  if not public.enviar_evento_meta('rls-landing', 'PageView', 'ev-1', 'https://x.test/l/rls-landing',
+                                   'agente', '200.1.1.1', 'fb.1.1.1', '') then
+    raise exception 'RLS FALHOU: evento da API de Conversões não foi enviado';
+  end if;
+  begin
+    perform public.enviar_evento_meta('rls-landing', 'Purchase', 'ev-2', '', '', '', '', '');
+    raise exception 'RLS FALHOU: evento fora da lista aceito';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  begin
+    perform public.definir_token_capi(lp, 'invasor');
+    raise exception 'RLS FALHOU: visitante trocou o token';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  update public.landing_pages set publicada = false where id = lp;
+  if public.landing_publica('rls-landing') is not null then
+    raise exception 'RLS FALHOU: landing não publicada apareceu';
+  end if;
+  if public.enviar_evento_meta('rls-landing', 'PageView', 'ev-3', '', '', '', '', '') then
+    raise exception 'RLS FALHOU: evento enviado de landing não publicada';
+  end if;
 
   -- ── reparo na instalação vazia ──────────────────────────────────────────
   -- 20. sem organização nenhuma, garantir_organizacao cria e faz dono
