@@ -6,9 +6,13 @@ import {
   LinkCta,
   LinkEvento,
   LinkTodosEventos,
+  MenuMobile,
+  TIPOGRAFIA_LP,
   capaEvento,
   detalheEvento,
+  ehFundoEscuro,
   fotoDa,
+  logoPara,
   variaveisCores,
 } from "../comum";
 import type { DadosLanding } from "../tipos";
@@ -23,37 +27,38 @@ export function ModeloPortfolio({ d }: { d: DadosLanding }) {
     "inline-flex rounded-full border border-[var(--lp-destaque)] px-3 py-1 text-[11px] font-medium uppercase tracking-wider text-[var(--lp-destaque)]";
   const botao =
     "inline-flex items-center gap-2 rounded-full bg-[var(--lp-primaria)] px-6 py-3 text-sm font-medium text-[var(--lp-sobre-primaria)] transition-opacity hover:opacity-85";
+  const logo = logoPara(d, ehFundoEscuro(d.cores.fundo) ? "escuro" : "claro");
+  const links = [
+    { href: "#sobre", rotulo: "Sobre" },
+    { href: "#trabalhos", rotulo: "Trabalhos" },
+    ...(c.servicos.length > 0 ? [{ href: "#servicos", rotulo: "Serviços" }] : []),
+    { href: "#eventos", rotulo: "Eventos" },
+  ];
 
   return (
     <div
       style={{ ...variaveisCores(d.cores), ...FONTE_SEM_SERIFA }}
-      className="min-h-screen bg-[var(--lp-fundo)] p-2 text-[var(--lp-texto)] md:p-4"
+      className={`min-h-screen bg-[var(--lp-fundo)] p-2 text-[var(--lp-texto)] md:p-4 ${TIPOGRAFIA_LP}`}
     >
       <header className="flex items-center justify-between px-3 py-3 md:px-6">
         <div className="flex items-center gap-3">
-          {d.logo ? (
-            <img src={d.logo} alt={c.nome} className="h-9 max-w-36 object-contain" />
+          {logo ? (
+            <img src={logo} alt={c.nome} className="h-9 max-w-36 object-contain" />
           ) : (
             <span className="text-lg font-semibold tracking-tight">{c.nome}</span>
           )}
         </div>
-        <nav className="flex items-center gap-5 text-sm">
-          <a href="#sobre" className="hidden md:inline">
-            Sobre
-          </a>
-          <a href="#trabalhos" className="hidden md:inline">
-            Trabalhos
-          </a>
-          <a href="#servicos" className="hidden md:inline">
-            Serviços
-          </a>
-          <a href="#eventos" className="hidden md:inline">
-            Eventos
-          </a>
+        <nav className="hidden items-center gap-5 text-sm md:flex">
+          {links.map((l) => (
+            <a key={l.href} href={l.href}>
+              {l.rotulo}
+            </a>
+          ))}
           <LinkCta href={d.linkCta} aoClicar={d.aoClicarCta} className={`${botao} px-4 py-2`}>
             {c.cta_texto}
           </LinkCta>
         </nav>
+        <MenuMobile links={links} d={d} classeCta={botao} estiloTitulo={FONTE_SEM_SERIFA} />
       </header>
 
       <section

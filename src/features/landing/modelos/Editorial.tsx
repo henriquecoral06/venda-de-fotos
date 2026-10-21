@@ -7,14 +7,24 @@ import {
   LinkCta,
   LinkEvento,
   LinkTodosEventos,
+  MenuMobile,
+  TIPOGRAFIA_LP,
   capaEvento,
   detalheEvento,
   fotoDa,
+  logoPara,
   variaveisCores,
 } from "../comum";
 import type { DadosLanding } from "../tipos";
 
-/** Editorial: preto e branco, serifa fina, capa dividida e mosaico. */
+const LINKS = [
+  { href: "#sobre", rotulo: "Sobre" },
+  { href: "#trabalhos", rotulo: "Trabalhos" },
+  { href: "#eventos", rotulo: "Eventos" },
+  { href: "#contato", rotulo: "Contato" },
+];
+
+/** Editorial: preto e branco, serifa fina, capa com duas fotos lado a lado e mosaico. */
 export function ModeloEditorial({ d }: { d: DadosLanding }) {
   const { conteudo: c, fotos } = d;
   const galeria = fotos.galeria.length > 0 ? fotos.galeria : fotos.capa;
@@ -24,28 +34,44 @@ export function ModeloEditorial({ d }: { d: DadosLanding }) {
   return (
     <div
       style={{ ...variaveisCores(d.cores), ...FONTE_SEM_SERIFA }}
-      className="min-h-screen bg-[var(--lp-fundo)] text-[var(--lp-texto)]"
+      className={`min-h-screen bg-[var(--lp-fundo)] text-[var(--lp-texto)] ${TIPOGRAFIA_LP}`}
     >
+      {/* O cabeçalho fica sobre a capa escura: vale a logo para fundo escuro. */}
       <header className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-5 py-5 text-white md:px-10">
-        {d.logo ? (
-          <img src={d.logo} alt={c.nome} className="h-9 max-w-40 object-contain" />
+        {logoPara(d, "escuro") ? (
+          <img
+            src={logoPara(d, "escuro") ?? ""}
+            alt={c.nome}
+            className="h-9 max-w-40 object-contain"
+          />
         ) : (
           <span style={FONTE_SERIFA} className="text-2xl italic">
             {c.nome}
           </span>
         )}
         <nav className="hidden gap-6 text-sm md:flex">
-          <a href="#sobre">Sobre</a>
-          <a href="#trabalhos">Trabalhos</a>
-          <a href="#eventos">Eventos</a>
-          <a href="#contato">Contato</a>
+          {LINKS.map((l) => (
+            <a key={l.href} href={l.href}>
+              {l.rotulo}
+            </a>
+          ))}
         </nav>
+        <MenuMobile
+          links={LINKS}
+          d={d}
+          classeBotao="text-white"
+          classeCta={`${botao} border-[var(--lp-texto)]`}
+          estiloTitulo={FONTE_SERIFA}
+        />
       </header>
 
-      {/* Capa: duas fotos lado a lado, título por cima em branco. */}
-      <section className="relative grid h-[88vh] min-h-[480px] grid-cols-1 overflow-hidden bg-black md:grid-cols-2">
-        <Foto src={fotoDa(fotos.capa, 0)} className="size-full opacity-85" />
-        <Foto src={fotoDa(fotos.capa, 1)} className="hidden size-full opacity-85 md:block" />
+      {/* Capa: duas fotos do mesmo tamanho, encostadas no centro da tela, com o
+          título por cima em branco. */}
+      <section className="relative flex h-[88vh] min-h-[480px] justify-center overflow-hidden bg-black">
+        <div className="grid h-full w-full max-w-6xl grid-cols-2">
+          <Foto src={fotoDa(fotos.capa, 0)} className="size-full opacity-85" />
+          <Foto src={fotoDa(fotos.capa, 1)} className="size-full opacity-85" />
+        </div>
         <div className="absolute inset-0 bg-black/25" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center text-white">
           {c.chamada && (

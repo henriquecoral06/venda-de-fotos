@@ -2,10 +2,12 @@ import { useRef, useState } from "react";
 import { ImagePlus, Loader2, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Campo } from "@/components/Campo";
+import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { ehHex, urlLogo } from "@/lib/marca";
 import type { ConfiguracoesLoja } from "@/features/loja/api";
 import { enviarImagemLanding, type EdicaoLanding, type RastreamentoLanding } from "./api";
@@ -17,7 +19,9 @@ type Mudar = (parcial: Partial<EdicaoLanding>) => void;
 
 export function AbaConteudo({ e, mudar }: { e: EdicaoLanding; mudar: Mudar }) {
   const c = e.conteudo;
-  const campo = (chave: keyof Omit<ConteudoLanding, "servicos" | "imagens">) => ({
+  const campo = (
+    chave: keyof Omit<ConteudoLanding, "servicos" | "imagens" | "formulario" | "cta_tipo">,
+  ) => ({
     value: c[chave],
     onChange: (ev: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       mudar({ conteudo: { ...c, [chave]: ev.target.value } }),
@@ -44,23 +48,36 @@ export function AbaConteudo({ e, mudar }: { e: EdicaoLanding; mudar: Mudar }) {
       <Campo rotulo="Texto de apoio" htmlFor="lp-subtitulo">
         <Textarea id="lp-subtitulo" rows={3} maxLength={400} {...campo("subtitulo")} />
       </Campo>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Campo rotulo="Texto do botão" htmlFor="lp-cta">
-          <Input id="lp-cta" maxLength={40} {...campo("cta_texto")} />
-        </Campo>
-        <Campo
-          rotulo="Link do botão"
-          htmlFor="lp-cta-link"
-          dica="Em branco, abre o WhatsApp da loja."
-        >
-          <Input
-            id="lp-cta-link"
-            type="url"
-            placeholder="https://"
-            maxLength={500}
-            {...campo("cta_link")}
+      <div className="space-y-4 rounded-lg border border-border p-3">
+        <Campo rotulo="O botão de contato abre">
+          <ControleSegmentado
+            opcoes={OPCOES_CTA}
+            valor={c.cta_tipo}
+            aoMudar={(cta_tipo) => mudar({ conteudo: { ...c, cta_tipo } })}
+            rotuloAria="O que o botão de contato abre"
           />
         </Campo>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Campo rotulo="Texto do botão" htmlFor="lp-cta">
+            <Input id="lp-cta" maxLength={40} {...campo("cta_texto")} />
+          </Campo>
+          {c.cta_tipo === "whatsapp" && (
+            <Campo
+              rotulo="Link do botão"
+              htmlFor="lp-cta-link"
+              dica="Em branco, abre o WhatsApp da loja."
+            >
+              <Input
+                id="lp-cta-link"
+                type="url"
+                placeholder="https://"
+                maxLength={500}
+                {...campo("cta_link")}
+              />
+            </Campo>
+          )}
+        </div>
+        {c.cta_tipo === "popup" && <CamposFormulario c={c} mudar={mudar} />}
       </div>
       <Campo rotulo="Título do “sobre”" htmlFor="lp-sobre-titulo">
         <Input id="lp-sobre-titulo" maxLength={120} {...campo("sobre_titulo")} />
@@ -123,6 +140,21 @@ export function AbaConteudo({ e, mudar }: { e: EdicaoLanding; mudar: Mudar }) {
         ))}
       </div>
 
+      {e.modelo === "classico" && (
+        <>
+          <Campo
+            rotulo="Título da faixa de chamada"
+            htmlFor="lp-faixa-titulo"
+            dica="A faixa com foto de fundo e botão, logo depois do “sobre”."
+          >
+            <Input id="lp-faixa-titulo" maxLength={120} {...campo("faixa_titulo")} />
+          </Campo>
+          <Campo rotulo="Texto da faixa de chamada" htmlFor="lp-faixa-texto">
+            <Textarea id="lp-faixa-texto" rows={2} maxLength={300} {...campo("faixa_texto")} />
+          </Campo>
+        </>
+      )}
+
       <Campo rotulo="Título da seção de eventos" htmlFor="lp-ev-titulo">
         <Input id="lp-ev-titulo" maxLength={120} {...campo("eventos_titulo")} />
       </Campo>
@@ -135,6 +167,93 @@ export function AbaConteudo({ e, mudar }: { e: EdicaoLanding; mudar: Mudar }) {
       <Campo rotulo="Instagram" htmlFor="lp-insta">
         <Input id="lp-insta" placeholder="@seuestudio" maxLength={60} {...campo("instagram")} />
       </Campo>
+    </div>
+  );
+}
+
+const OPCOES_CTA = [
+  { valor: "whatsapp", rotulo: "WhatsApp ou link" },
+  { valor: "popup", rotulo: "Formulário (popup)" },
+] as const;
+
+const CAMPOS_FIXOS = [
+  { chave: "nome", rotulo: "Nome" },
+  { chave: "email", rotulo: "E-mail" },
+  { chave: "telefone", rotulo: "Telefone" },
+] as const;
+
+/** Campos que o popup pede; as respostas chegam na aba Contatos. */
+function CamposFormulario({ c, mudar }: { c: ConteudoLanding; mudar: Mudar }) {
+  const f = c.formulario;
+  const mudarForm = (parcial: Partial<ConteudoLanding["formulario"]>) =>
+    mudar({ conteudo: { ...c, formulario: { ...f, ...parcial } } });
+  const nenhum = !f.nome && !f.email && !f.telefone && !f.personalizado.trim();
+  return (
+    <div className="space-y-4">
+      <Campo rotulo="Título do formulário" htmlFor="lp-form-titulo">
+        <Input
+          id="lp-form-titulo"
+          maxLength={120}
+          value={f.titulo}
+          onChange={(ev) => mudarForm({ titulo: ev.target.value })}
+        />
+      </Campo>
+      <Campo rotulo="Texto do formulário" htmlFor="lp-form-texto">
+        <Textarea
+          id="lp-form-texto"
+          rows={2}
+          maxLength={300}
+          value={f.texto}
+          onChange={(ev) => mudarForm({ texto: ev.target.value })}
+        />
+      </Campo>
+      <fieldset className="space-y-2">
+        <legend className="text-label-md text-foreground">Campos</legend>
+        {CAMPOS_FIXOS.map((cf) => (
+          <label key={cf.chave} className="flex items-center gap-2 text-sm text-foreground">
+            <Checkbox
+              checked={f[cf.chave]}
+              onCheckedChange={(v) => mudarForm({ [cf.chave]: v === true })}
+            />
+            {cf.rotulo}
+          </label>
+        ))}
+      </fieldset>
+      <Campo
+        rotulo="Campo personalizado"
+        htmlFor="lp-form-personalizado"
+        dica="Escreva a pergunta, por exemplo “Data do evento” ou “Conte o que você imagina”. Em branco, o campo não aparece."
+      >
+        <Input
+          id="lp-form-personalizado"
+          maxLength={60}
+          value={f.personalizado}
+          onChange={(ev) => mudarForm({ personalizado: ev.target.value })}
+        />
+      </Campo>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Campo rotulo="Texto do botão de envio" htmlFor="lp-form-botao">
+          <Input
+            id="lp-form-botao"
+            maxLength={40}
+            value={f.botao}
+            onChange={(ev) => mudarForm({ botao: ev.target.value })}
+          />
+        </Campo>
+        <Campo rotulo="Mensagem depois do envio" htmlFor="lp-form-sucesso">
+          <Input
+            id="lp-form-sucesso"
+            maxLength={200}
+            value={f.sucesso}
+            onChange={(ev) => mudarForm({ sucesso: ev.target.value })}
+          />
+        </Campo>
+      </div>
+      {nenhum && (
+        <p className="text-caption text-danger" role="alert">
+          Marque pelo menos um campo para o formulário funcionar.
+        </p>
+      )}
     </div>
   );
 }
@@ -232,6 +351,34 @@ function GrupoFotos({
   );
 }
 
+/**
+ * Tamanho ideal de cada grupo, pela proporção em que o modelo mostra a foto.
+ * O painel reduz o envio para no máximo 1920 px no lado maior.
+ */
+const MEDIDAS: Record<EdicaoLanding["modelo"], { capa: string; galeria: string; sobre: string }> = {
+  editorial: {
+    capa: "2 fotos verticais, 1200 × 1600 px (3:4). Ficam lado a lado; no celular as laterais são cortadas, então deixe a pessoa no centro.",
+    galeria: "Horizontais, 1600 × 1200 px (4:3).",
+    sobre: "Vertical, 1200 × 1500 px (4:5).",
+  },
+  portfolio: {
+    capa: "3 fotos verticais, 1200 × 1600 px (3:4), em leque.",
+    galeria: "Horizontais, 1600 × 1000 px (16:10).",
+    sobre: "Vertical, 1200 × 1500 px (4:5).",
+  },
+  estudio: {
+    capa: "5 fotos bem verticais, 1080 × 1800 px (3:5), na faixa em curva.",
+    galeria: "Horizontais, 1920 × 1080 px (16:9).",
+    sobre: "Vertical, 1200 × 1500 px (4:5).",
+  },
+  classico: {
+    capa: "1 foto horizontal, 1920 × 1280 px (3:2), em tela cheia. No celular as laterais são cortadas: deixe o casal ou a pessoa no centro.",
+    galeria:
+      "Verticais, 1200 × 1600 px (3:4), para os serviços. A 4ª foto vira o fundo da faixa de chamada (prefira uma horizontal).",
+    sobre: "Quadrada, 1200 × 1200 px (1:1).",
+  },
+};
+
 export function AbaFotos({
   e,
   mudar,
@@ -247,11 +394,12 @@ export function AbaFotos({
   return (
     <div className="space-y-6">
       <p className="rounded-lg bg-muted p-3 text-caption text-muted-foreground">
-        Sem fotos aqui, a página usa as capas dos seus eventos publicados.
+        Sem fotos aqui, a página usa as capas dos seus eventos publicados. Envie JPG, PNG ou WebP; o
+        painel reduz para até 1920 px no lado maior, então foto maior que isso não melhora nada.
       </p>
       <GrupoFotos
         titulo="Capa"
-        dica={`O modelo ${INFO_MODELO[e.modelo].nome} mostra ${INFO_MODELO[e.modelo].fotosCapa} na capa.`}
+        dica={`Ideal: ${MEDIDAS[e.modelo].capa}`}
         caminhos={img.capa}
         limite={5}
         organizacaoId={organizacaoId}
@@ -259,7 +407,7 @@ export function AbaFotos({
       />
       <GrupoFotos
         titulo="Galeria de trabalhos"
-        dica="Mosaico, cartões de serviço e fundos das seções."
+        dica={`Mosaico, cartões de serviço e fundos das seções. Ideal: ${MEDIDAS[e.modelo].galeria}`}
         caminhos={img.galeria}
         limite={8}
         organizacaoId={organizacaoId}
@@ -267,7 +415,7 @@ export function AbaFotos({
       />
       <GrupoFotos
         titulo="Foto do “sobre”"
-        dica="Retrato seu ou do estúdio."
+        dica={`Retrato seu ou do estúdio. Ideal: ${MEDIDAS[e.modelo].sobre}`}
         caminhos={img.sobre ? [img.sobre] : []}
         limite={1}
         organizacaoId={organizacaoId}

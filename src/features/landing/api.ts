@@ -5,6 +5,7 @@ import type { Json, Tables } from "@/integrations/supabase/types";
 import { BUCKET_MARCA, urlLogo, type Marca } from "@/lib/marca";
 import { urlPrevia } from "@/lib/fotos";
 import type { EventoPublico } from "@/features/vitrine/api";
+import { ANCORA_FORMULARIO } from "./comum";
 import {
   ehModelo,
   esquemaConteudo,
@@ -258,6 +259,7 @@ export function montarDados({
   eventos,
   aoClicarCta,
   aoClicarEvento,
+  aoEnviarFormulario = async () => undefined,
 }: {
   modelo: ModeloLanding;
   cores: CoresLanding;
@@ -267,6 +269,7 @@ export function montarDados({
   eventos: EventoPublico[];
   aoClicarCta: () => void;
   aoClicarEvento: (slug: string) => void;
+  aoEnviarFormulario?: DadosLanding["aoEnviarFormulario"];
 }): DadosLanding {
   const capasEventos = eventos
     .map((e) => e.capa)
@@ -283,10 +286,67 @@ export function montarDados({
       galeria: galeria.length > 0 ? galeria : capasEventos,
       sobre: conteudo.imagens.sobre ? urlLogo(conteudo.imagens.sobre) : null,
     },
-    logo: marca?.logo ? urlLogo(marca.logo) : null,
-    linkCta: linkDoCta(conteudo, whatsapp),
+    logos: {
+      claro: marca?.logo ? urlLogo(marca.logo) : null,
+      escuro: marca?.logo_escuro ? urlLogo(marca.logo_escuro) : null,
+    },
+    linkCta: conteudo.cta_tipo === "popup" ? ANCORA_FORMULARIO : linkDoCta(conteudo, whatsapp),
     eventos,
     aoClicarCta,
     aoClicarEvento,
+    aoEnviarFormulario,
   };
+}
+
+/* ───────────────────────── Contatos do formulário ───────────────────────── */
+
+const esquemaDadosContato = z
+  .object({
+    nome: z.string(),
+    email: z.string(),
+    telefone: z.string(),
+    personalizado: z.string(),
+  })
+  .partial();
+
+export interface ContatoLanding {
+  id: string;
+  created_at: string;
+  dados: z.infer<typeof esquemaDadosContato>;
+}
+
+/** Respostas do formulário (popup) desta landing, da mais nova para a mais antiga. */
+export function useContatosLanding(landingId: string) {
+  return useQuery({
+    queryKey: [...CHAVE_LANDING, "contatos", landingId],
+    queryFn: async (): Promise<ContatoLanding[]> => {
+      const { data, error } = await supabase
+        .from("landing_contatos")
+        .select("id, created_at, dados")
+        .eq("landing_id", landingId)
+        .order("created_at", { ascending: false });
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((c) => {
+        const dados = esquemaDadosContato.safeParse(c.dados);
+        return { id: c.id, created_at: c.created_at, dados: dados.success ? dados.data : {} };
+      });
+    },
+  });
+}
+
+export function useExcluirContato() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { data, error } = await supabase
+        .from("landing_contatos")
+        .delete()
+        .eq("id", id)
+        .select("id");
+      if (error) throw new Error(error.message);
+      if (!data || data.length === 0)
+        throw new Error("Você não tem permissão para excluir este contato.");
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_LANDING }),
+  });
 }

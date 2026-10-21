@@ -668,6 +668,71 @@ begin
   perform set_config('storage.operation', '', true);
   perform set_config('role', 'none', true);
 
+  -- 32. formulário da landing: o visitante envia, só a equipe lê; com limite
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  update public.landing_pages set publicada = true, conteudo = '{"cta_tipo": "whatsapp"}' where id = lp;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  begin
+    perform public.enviar_contato_landing('rls-landing', '{"nome": "Ana"}');
+    raise exception 'RLS FALHOU: contato aceito em landing sem formulário';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  update public.landing_pages set conteudo = '{"cta_tipo": "popup"}' where id = lp;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  if not public.enviar_contato_landing('rls-landing',
+       '{"nome": " Ana ", "email": "ana@exemplo.test", "invasor": "x"}') then
+    raise exception 'RLS FALHOU: contato válido recusado';
+  end if;
+  begin
+    perform public.enviar_contato_landing('rls-landing', '{"email": "nao-e-email"}');
+    raise exception 'RLS FALHOU: contato aceitou e-mail inválido';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  begin
+    perform 1 from public.landing_contatos;
+    raise exception 'RLS FALHOU: visitante leu landing_contatos';
+  exception when insufficient_privilege then null;
+  end;
+  ok := false;
+  for n in 1..8 loop
+    begin
+      perform public.enviar_contato_landing('rls-landing', jsonb_build_object('nome', 'Robô ' || n));
+    exception when others then
+      if sqlerrm like 'Muitas tentativas%' then ok := true; exit; end if;
+      raise;
+    end;
+  end loop;
+  if not ok then raise exception 'RLS FALHOU: formulário sem limite de envios'; end if;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  select dados into j from public.landing_contatos where landing_id = lp order by created_at limit 1;
+  if j ->> 'nome' is distinct from 'Ana' or j ? 'invasor' then
+    raise exception 'RLS FALHOU: contato gravado errado: %', j;
+  end if;
+  begin
+    insert into public.landing_contatos (landing_id, user_id, organizacao_id, dados)
+    values (lp, u_dono, org_id, '{}');
+    raise exception 'RLS FALHOU: equipe gravou contato direto na tabela';
+  exception when insufficient_privilege then null;
+  end;
+  perform set_config('role', 'none', true);
+
   -- ── reparo na instalação vazia ──────────────────────────────────────────
   -- 20. sem organização nenhuma, garantir_organizacao cria e faz dono
   perform set_config('role', 'none', true);

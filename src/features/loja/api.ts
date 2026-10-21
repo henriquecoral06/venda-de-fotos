@@ -24,6 +24,7 @@ export const esquemaLoja = z.object({
     .max(30, "Telefone inválido.")
     .refine((v) => v === "" || v.replace(/\D/g, "").length >= 10, "Informe o DDD e o número."),
   logo_caminho: z.string().max(300),
+  logo_escuro_caminho: z.string().max(300),
   cor_primaria: z.string().regex(/^(#[0-9a-f]{6})?$/, "Cor principal inválida."),
   cor_secundaria: z.string().regex(/^(#[0-9a-f]{6})?$/, "Cor de apoio inválida."),
 });
@@ -85,7 +86,15 @@ export async function removerLogo(caminho: string): Promise<void> {
 export function useSalvarLoja() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ dados, logoAnterior }: { dados: DadosLoja; logoAnterior: string }) => {
+    mutationFn: async ({
+      dados,
+      logoAnterior,
+      logoEscuroAnterior,
+    }: {
+      dados: DadosLoja;
+      logoAnterior: string;
+      logoEscuroAnterior: string;
+    }) => {
       const r = esquemaLoja.safeParse(dados);
       if (!r.success) throw new Error(r.error.issues[0]?.message ?? "Dados inválidos.");
       const { data, error } = await supabase
@@ -98,6 +107,9 @@ export function useSalvarLoja() {
         throw new Error("Só o dono da organização altera os dados da loja.");
       }
       if (logoAnterior && logoAnterior !== r.data.logo_caminho) await removerLogo(logoAnterior);
+      if (logoEscuroAnterior && logoEscuroAnterior !== r.data.logo_escuro_caminho) {
+        await removerLogo(logoEscuroAnterior);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_LOJA }),
   });

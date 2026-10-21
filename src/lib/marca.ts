@@ -21,7 +21,10 @@ const REGEX_HEX = /^#[0-9a-f]{6}$/;
 export const CLASSE_BOTAO_MARCA = "bg-primary text-primary-foreground hover:bg-primary/90";
 
 export interface Marca {
+  /** Logo para fundo claro (a principal). */
   logo: string | null;
+  /** Logo para fundo escuro; banco antigo devolve sem ela. */
+  logo_escuro?: string | null | undefined;
   cor_primaria: string | null;
   cor_secundaria: string | null;
 }

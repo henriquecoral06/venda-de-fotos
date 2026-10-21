@@ -7,9 +7,13 @@ import {
   LinkCta,
   LinkEvento,
   LinkTodosEventos,
+  MenuMobile,
+  TIPOGRAFIA_LP,
   capaEvento,
   detalheEvento,
+  ehFundoEscuro,
   fotoDa,
+  logoPara,
   variaveisCores,
 } from "../comum";
 import type { DadosLanding } from "../tipos";
@@ -28,34 +32,37 @@ export function ModeloEstudio({ d }: { d: DadosLanding }) {
   const pilula =
     "inline-flex items-center gap-2 rounded-full bg-[var(--lp-primaria)] px-5 py-2.5 text-sm font-medium text-[var(--lp-sobre-primaria)] transition-opacity hover:opacity-85";
   const bloco = "rounded-3xl bg-[var(--lp-destaque)] text-[var(--lp-sobre-destaque)]";
+  const logo = logoPara(d, ehFundoEscuro(d.cores.fundo) ? "escuro" : "claro");
+  const links = [
+    { href: "#sobre", rotulo: "Sobre" },
+    ...(c.servicos.length > 0 ? [{ href: "#servicos", rotulo: "Serviços" }] : []),
+    { href: "#eventos", rotulo: "Eventos" },
+  ];
   const chip =
     "rounded-full border border-[color-mix(in_srgb,var(--lp-texto)_20%,transparent)] px-3 py-1 text-xs opacity-80";
 
   return (
     <div
       style={{ ...variaveisCores(d.cores), ...FONTE_SEM_SERIFA }}
-      className="min-h-screen overflow-hidden bg-[var(--lp-fundo)] text-[var(--lp-texto)]"
+      className={`min-h-screen overflow-hidden bg-[var(--lp-fundo)] text-[var(--lp-texto)] ${TIPOGRAFIA_LP}`}
     >
       <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 md:px-8">
-        {d.logo ? (
-          <img src={d.logo} alt={c.nome} className="h-8 max-w-36 object-contain" />
+        {logo ? (
+          <img src={logo} alt={c.nome} className="h-8 max-w-36 object-contain" />
         ) : (
           <span className="text-lg font-semibold">{c.nome}</span>
         )}
-        <nav className="flex items-center gap-6 text-sm">
-          <a href="#sobre" className="hidden opacity-80 hover:opacity-100 md:inline">
-            Sobre
-          </a>
-          <a href="#servicos" className="hidden opacity-80 hover:opacity-100 md:inline">
-            Serviços
-          </a>
-          <a href="#eventos" className="hidden opacity-80 hover:opacity-100 md:inline">
-            Eventos
-          </a>
+        <nav className="hidden items-center gap-6 text-sm md:flex">
+          {links.map((l) => (
+            <a key={l.href} href={l.href} className="opacity-80 hover:opacity-100">
+              {l.rotulo}
+            </a>
+          ))}
           <LinkCta href={d.linkCta} aoClicar={d.aoClicarCta} className={pilula}>
             {c.cta_texto}
           </LinkCta>
         </nav>
+        <MenuMobile links={links} d={d} classeCta={pilula} estiloTitulo={FONTE_SEM_SERIFA} />
       </header>
 
       <section className="px-5 pt-14 text-center md:pt-20">
@@ -63,14 +70,12 @@ export function ModeloEstudio({ d }: { d: DadosLanding }) {
           <p className="mb-5 text-xs uppercase tracking-[0.25em] opacity-60">{c.chamada}</p>
         )}
         <h1 className="mx-auto max-w-4xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-7xl">
-          {linha1}
+          {/* Cada parte é um bloco equilibrado: com <br>, o navegador não equilibra. */}
+          <span className="block text-balance">{linha1}</span>
           {linha2 && (
-            <>
-              <br />
-              <span style={FONTE_ITALICA} className="font-normal opacity-60">
-                {linha2}
-              </span>
-            </>
+            <span style={FONTE_ITALICA} className="block text-balance font-normal opacity-60">
+              {linha2}
+            </span>
           )}
         </h1>
         <p className="mx-auto mt-6 max-w-xl opacity-70">{c.subtitulo}</p>

@@ -53,7 +53,7 @@ export function PreviaEscalada({
         aria-hidden="true"
         inert
       >
-        <RenderLanding dados={dados} />
+        <RenderLanding dados={dados} previa />
       </div>
     </div>
   );

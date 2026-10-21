@@ -32,8 +32,24 @@ export const esquemaConteudo = z.object({
     .array(z.object({ titulo: texto(80), descricao: texto(400) }))
     .max(4, "Use no máximo 4 serviços."),
   cta_texto: texto(40),
+  /** `whatsapp`: o botão abre o link (ou o WhatsApp da loja); `popup`: abre o formulário. */
+  cta_tipo: z.enum(["whatsapp", "popup"]),
   /** Vazio = WhatsApp da loja. */
   cta_link: z.union([z.literal(""), z.string().trim().url("Link inválido.").max(500)]),
+  formulario: z.object({
+    titulo: texto(120),
+    texto: texto(300),
+    nome: z.boolean(),
+    email: z.boolean(),
+    telefone: z.boolean(),
+    /** Rótulo do campo livre; vazio = sem o campo. */
+    personalizado: texto(60),
+    botao: texto(40),
+    sucesso: texto(200),
+  }),
+  /** Faixa de chamada do modelo Clássico (entre o sobre e os serviços). */
+  faixa_titulo: texto(120),
+  faixa_texto: texto(300),
   frase_final: texto(160),
   instagram: texto(60),
   eventos_titulo: texto(120),
@@ -107,7 +123,20 @@ export function conteudoInicial(modelo: ModeloLanding, nome: string): ConteudoLa
       },
     ],
     cta_texto: "Fale comigo",
+    cta_tipo: "whatsapp",
     cta_link: "",
+    formulario: {
+      titulo: "Vamos conversar",
+      texto: "Deixe o seu contato e eu respondo ainda hoje.",
+      nome: true,
+      email: false,
+      telefone: true,
+      personalizado: "",
+      botao: "Enviar",
+      sucesso: "Recebi o seu contato. Em breve eu falo com você.",
+    },
+    faixa_titulo: "Formas de trabalharmos juntos",
+    faixa_texto: "Ensaio, evento ou casamento: conte o que você imagina e eu monto a proposta.",
     frase_final: "Vamos registrar o seu próximo momento?",
     instagram: "",
     eventos_titulo: "Eventos recentes",
@@ -142,13 +171,22 @@ export function conteudoInicial(modelo: ModeloLanding, nome: string): ConteudoLa
  */
 export function lerConteudo(bruto: unknown, modelo: ModeloLanding, nome: string): ConteudoLanding {
   const inicial = conteudoInicial(modelo, nome);
-  const parcial = esquemaConteudo.partial().safeParse(bruto);
+  // Blocos aninhados lidos à parte: um campo velho ou faltando dentro deles não
+  // derruba o resto do conteúdo.
+  const parcial = esquemaConteudo
+    .extend({ imagens: z.unknown(), formulario: z.unknown() })
+    .partial()
+    .safeParse(bruto);
   if (!parcial.success) return inicial;
   const imagens = esquemaConteudo.shape.imagens.partial().safeParse(parcial.data.imagens ?? {});
+  const formulario = esquemaConteudo.shape.formulario
+    .partial()
+    .safeParse(parcial.data.formulario ?? {});
   return {
     ...inicial,
     ...parcial.data,
     imagens: { ...inicial.imagens, ...(imagens.success ? imagens.data : {}) },
+    formulario: { ...inicial.formulario, ...(formulario.success ? formulario.data : {}) },
   } as ConteudoLanding;
 }
 
@@ -168,9 +206,17 @@ export interface DadosLanding {
   conteudo: ConteudoLanding;
   /** URLs já resolvidas (fotos enviadas ou, sem elas, capas dos eventos). */
   fotos: { capa: string[]; galeria: string[]; sobre: string | null };
-  logo: string | null;
+  /** Logo da loja para fundo claro e para fundo escuro (URLs), quando houver. */
+  logos: { claro: string | null; escuro: string | null };
   linkCta: string;
   eventos: EventoPublico[];
   aoClicarCta: () => void;
   aoClicarEvento: (slug: string) => void;
+  /** Envia o formulário do popup; a prévia do painel só finge que enviou. */
+  aoEnviarFormulario: (dados: DadosFormulario) => Promise<void>;
 }
+
+/** Respostas do formulário: só os campos que a landing pediu. */
+export type DadosFormulario = Partial<
+  Record<"nome" | "email" | "telefone" | "personalizado", string>
+>;

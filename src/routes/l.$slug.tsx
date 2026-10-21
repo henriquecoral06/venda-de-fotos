@@ -75,6 +75,14 @@ function PaginaLanding() {
       eventos: pagina.eventos as EventoPublico[],
       aoClicarCta: () => rastrear("Contact", { content_name: conteudo.cta_texto }),
       aoClicarEvento: (s) => rastrear("ViewContent", { content_ids: [s], content_type: "evento" }),
+      aoEnviarFormulario: async (dadosFormulario) => {
+        const { error } = await supabase.rpc("enviar_contato_landing", {
+          _slug: pagina.slug,
+          _dados: dadosFormulario,
+        });
+        if (error) throw new Error(error.message);
+        rastrear("Lead", { content_name: conteudo.formulario.titulo });
+      },
     });
   }, [pagina]);
 

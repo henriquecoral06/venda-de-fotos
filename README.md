@@ -31,7 +31,8 @@ toda mudança neste repositório.
 - `/landing-pages`: páginas para anúncios em quatro modelos (Editorial, Portfólio, Estúdio e
   Clássico), com textos, fotos e cores editáveis e prévia ao vivo. Cada uma instala Meta Pixel,
   GA4, Google Ads, Google Tag Manager, TikTok Pixel, código próprio e a API de Conversões da Meta,
-  e todas mostram os eventos da vitrine.
+  e todas mostram os eventos da vitrine. O botão de contato abre o WhatsApp (ou um link) ou um
+  formulário em popup com os campos que o fotógrafo escolhe; as respostas ficam na aba Contatos.
 - `/equipe` e `/perfil`, do template.
 
 **Telas do cliente** (sem conta, sempre claras)
@@ -117,8 +118,14 @@ Para ligar o repositório a um Worker (Workers & Pages → Create → Import a r
 - Os modelos são originais, inspirados no estilo de sites de fotógrafos; as cores ficam em
   variáveis `--lp-*` da própria página, fora do design system do painel.
 - Pixels e tags são instalados no navegador do visitante com o código oficial de cada plataforma,
-  depois de validar o formato do ID. O botão de contato dispara `Contact` e o clique num evento
-  dispara `ViewContent`, além do `PageView`.
+  depois de validar o formato do ID. O botão de contato dispara `Contact`, o envio do formulário
+  dispara `Lead` e o clique num evento dispara `ViewContent`, além do `PageView`.
+- Formulário: `enviar_contato_landing` grava em `landing_contatos` (só a equipe lê), com 5 envios
+  por visitante a cada hora.
+- No celular, os quatro modelos têm menu no cabeçalho e um botão de contato preso embaixo, que só
+  aparece enquanto nenhum outro botão de contato está na tela.
+- Logo: a loja tem uma logo para fundo claro e outra para fundo escuro; cada modelo usa a que
+  contrasta com o fundo do cabeçalho.
 - API de Conversões da Meta: o token fica em `landing_segredos`, que nenhum cliente lê. O navegador
   chama uma server function que junta IP e user agent e chama `enviar_evento_meta`, que envia para a
   Meta pelo `pg_net`. Pixel e API usam o mesmo `event_id`, então a Meta não conta em dobro. Use o
@@ -143,6 +150,7 @@ supabase/migrations/20261019120000_eventos_abertos.sql  eventos abertos e vitrin
 supabase/migrations/20261021120000_landing_pages.sql    landing pages, segredos e API de Conversões
 supabase/migrations/20261022120000_revisao_seguranca.sql link secreto, limites, cadastro fechado, download liberado
 supabase/migrations/20261023120000_remover_busca_selfie.sql tira a busca por selfie e apaga os rostos
+supabase/migrations/20261024120000_landing_formulario_logo.sql formulário da landing e logo para fundo escuro
 ```
 
 ## Próximos passos

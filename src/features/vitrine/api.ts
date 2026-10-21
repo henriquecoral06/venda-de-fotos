@@ -27,6 +27,7 @@ const fotoPublica = z.object({
 const marca = z
   .object({
     logo: z.string().nullable(),
+    logo_escuro: z.string().nullable().optional(),
     cor_primaria: z.string().nullable(),
     cor_secundaria: z.string().nullable(),
   })

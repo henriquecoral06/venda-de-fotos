@@ -94,6 +94,8 @@ begin
      or has_table_privilege('anon', 'public.landing_segredos', 'SELECT')
      or has_table_privilege('authenticated', 'public.landing_segredos', 'SELECT')
      or has_table_privilege('anon', 'public.limites_acesso', 'SELECT')
+     or has_table_privilege('anon', 'public.landing_contatos', 'SELECT')
+     or has_table_privilege('authenticated', 'public.landing_contatos', 'INSERT')
      or has_table_privilege('authenticated', 'public.limites_acesso', 'SELECT')
      or has_function_privilege('anon', 'public.registrar_acesso(text, text)', 'EXECUTE')
      or has_function_privilege('anon', 'public.galeria_pelo_link(text)', 'EXECUTE')
@@ -115,6 +117,8 @@ begin
   if not has_column_privilege('authenticated', 'public.perfis', 'nome', 'UPDATE')
      or not has_column_privilege('authenticated', 'public.organizacoes', 'cadastro_aberto', 'UPDATE')
      or not has_column_privilege('authenticated', 'public.configuracoes_loja', 'marca_dagua_ativa', 'UPDATE')
+     or not has_column_privilege('authenticated', 'public.configuracoes_loja', 'logo_escuro_caminho', 'UPDATE')
+     or not has_table_privilege('authenticated', 'public.landing_contatos', 'SELECT')
      or not has_table_privilege('authenticated', 'public.perfis', 'SELECT')
      or not has_table_privilege('authenticated', 'public.organizacao_membros', 'SELECT') then
     raise exception 'REPARO FALHOU: authenticated perdeu privilégio da fundação em perfis/organizacoes';
@@ -166,6 +170,7 @@ begin
           and has_function_privilege('anon', 'public.foto_original_liberada(text)', 'EXECUTE')
           and has_function_privilege('anon', 'public.eventos_publicos()', 'EXECUTE')
           and has_function_privilege('anon', 'public.landing_publica(text)', 'EXECUTE')
+          and has_function_privilege('anon', 'public.enviar_contato_landing(text, jsonb)', 'EXECUTE')
           and has_function_privilege('anon', 'public.enviar_evento_meta(text, text, text, text, text, text, text, text)', 'EXECUTE')
           and has_function_privilege('authenticated', 'public.definir_token_capi(uuid, text)', 'EXECUTE')
           and not has_function_privilege('anon', 'public.definir_token_capi(uuid, text)', 'EXECUTE')) then

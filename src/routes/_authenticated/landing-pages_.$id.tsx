@@ -23,6 +23,7 @@ import {
   type LandingPage,
 } from "@/features/landing/api";
 import { AbaConteudo, AbaCores, AbaFotos, AbaRastreamento } from "@/features/landing/PainelEdicao";
+import { ContatosLanding } from "@/features/landing/ContatosLanding";
 import { PreviaEscalada } from "@/features/landing/PreviaEscalada";
 import { INFO_MODELO, MODELOS, type ModeloLanding } from "@/features/landing/tipos";
 import { gerarSlug } from "@/lib/fotos";
@@ -212,11 +213,22 @@ function Editor({ landing, temToken }: { landing: LandingPage; temToken: boolean
           </Card>
 
           <Tabs defaultValue="conteudo">
-            <TabsList className="w-full">
-              <TabsTrigger value="conteudo">Conteúdo</TabsTrigger>
-              <TabsTrigger value="fotos">Fotos</TabsTrigger>
-              <TabsTrigger value="cores">Cores</TabsTrigger>
-              <TabsTrigger value="rastreamento">Rastreamento</TabsTrigger>
+            <TabsList className="grid h-auto w-full grid-cols-5">
+              <TabsTrigger value="conteudo" className="px-1 text-xs sm:text-sm">
+                Conteúdo
+              </TabsTrigger>
+              <TabsTrigger value="fotos" className="px-1 text-xs sm:text-sm">
+                Fotos
+              </TabsTrigger>
+              <TabsTrigger value="cores" className="px-1 text-xs sm:text-sm">
+                Cores
+              </TabsTrigger>
+              <TabsTrigger value="rastreamento" className="px-1 text-xs sm:text-sm">
+                Rastreio
+              </TabsTrigger>
+              <TabsTrigger value="contatos" className="px-1 text-xs sm:text-sm">
+                Contatos
+              </TabsTrigger>
             </TabsList>
             <Card className="mt-3 p-4">
               <TabsContent value="conteudo" className="mt-0">
@@ -238,6 +250,13 @@ function Editor({ landing, temToken }: { landing: LandingPage; temToken: boolean
                     setToken(t);
                     setAlterado(true);
                   }}
+                />
+              </TabsContent>
+              <TabsContent value="contatos" className="mt-0">
+                <ContatosLanding
+                  landingId={landing.id}
+                  rotuloPersonalizado={edicao.conteudo.formulario.personalizado}
+                  usaFormulario={edicao.conteudo.cta_tipo === "popup"}
                 />
               </TabsContent>
             </Card>

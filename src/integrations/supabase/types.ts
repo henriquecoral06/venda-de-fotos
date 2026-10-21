@@ -18,6 +18,7 @@ export type Database = {
           id: number
           instrucoes_pagamento: string
           logo_caminho: string
+          logo_escuro_caminho: string
           marca_dagua_ativa: boolean
           nome_exibicao: string
           texto_marca_dagua: string
@@ -31,6 +32,7 @@ export type Database = {
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
+          logo_escuro_caminho?: string
           marca_dagua_ativa?: boolean
           nome_exibicao?: string
           texto_marca_dagua?: string
@@ -44,6 +46,7 @@ export type Database = {
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
+          logo_escuro_caminho?: string
           marca_dagua_ativa?: boolean
           nome_exibicao?: string
           texto_marca_dagua?: string
@@ -215,6 +218,44 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      landing_contatos: {
+        Row: {
+          created_at: string
+          dados: Json
+          id: string
+          landing_id: string
+          organizacao_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dados?: Json
+          id?: string
+          landing_id: string
+          organizacao_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          id?: string
+          landing_id?: string
+          organizacao_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_contatos_landing_id_fkey"
+            columns: ["landing_id"]
+            isOneToOne: false
+            referencedRelation: "landing_pages"
             referencedColumns: ["id"]
           },
         ]
@@ -560,6 +601,7 @@ export type Database = {
       }
       definir_cadastro_aberto: { Args: { _aberto: boolean }; Returns: boolean }
       definir_token_capi: { Args: { _landing: string; _token: string }; Returns: undefined }
+      enviar_contato_landing: { Args: { _dados: Json; _slug: string }; Returns: boolean }
       enviar_evento_meta: {
         Args: {
           _event_id: string

@@ -81,6 +81,7 @@ function FormularioLoja({
     instrucoes_pagamento: config.instrucoes_pagamento,
     whatsapp: config.whatsapp,
     logo_caminho: config.logo_caminho,
+    logo_escuro_caminho: config.logo_escuro_caminho,
     cor_primaria: config.cor_primaria,
     cor_secundaria: config.cor_secundaria,
   });
@@ -94,7 +95,11 @@ function FormularioLoja({
   function enviar(e: React.FormEvent) {
     e.preventDefault();
     salvar.mutate(
-      { dados, logoAnterior: config.logo_caminho },
+      {
+        dados,
+        logoAnterior: config.logo_caminho,
+        logoEscuroAnterior: config.logo_escuro_caminho,
+      },
       {
         onSuccess: () => toast.success("Dados da loja salvos."),
         onError: (erro: Error) => toast.error(erro.message),
@@ -109,6 +114,7 @@ function FormularioLoja({
       <CartaoMarca
         valores={dados}
         logoSalva={config.logo_caminho}
+        logoEscuroSalva={config.logo_escuro_caminho}
         organizacaoId={organizacaoId}
         podeEditar={podeEditar}
         aoMudar={(parcial) => setDados((d) => ({ ...d, ...parcial }))}
