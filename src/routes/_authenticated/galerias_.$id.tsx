@@ -34,7 +34,7 @@ import { FormularioGaleria } from "@/features/galerias/FormularioGaleria";
 import { GradeFotos } from "@/features/galerias/GradeFotos";
 import { VARIANTE_STATUS_GALERIA } from "@/features/galerias/TabelaGalerias";
 import { brl, dataBR } from "@/lib/format";
-import { linkGaleria, rotuloFotos } from "@/lib/fotos";
+import { enderecoGaleria, linkGaleria, rotuloFotos } from "@/lib/fotos";
 import { BRAND } from "@/config/brand";
 
 export const Route = createFileRoute("/_authenticated/galerias_/$id")({
@@ -95,7 +95,7 @@ function PaginaGaleria() {
 
   async function copiarLink() {
     try {
-      await navigator.clipboard.writeText(linkGaleria(g.slug));
+      await navigator.clipboard.writeText(linkGaleria(g));
       toast.success(
         g.senha ? "Link copiado. Envie a senha junto para o cliente." : "Link copiado.",
       );
@@ -157,7 +157,7 @@ function PaginaGaleria() {
             </Button>
             {g.status === "publicada" && (
               <Button asChild>
-                <a href={`/g/${g.slug}`} target="_blank" rel="noreferrer">
+                <a href={enderecoGaleria(g)} target="_blank" rel="noreferrer">
                   <ExternalLink className="size-4" />
                   Abrir galeria
                 </a>
@@ -179,7 +179,7 @@ function PaginaGaleria() {
           </Badge>
         )}
         <span className="text-caption text-muted-foreground">
-          {rotuloFotos(lista.length)} · /g/{g.slug}
+          {rotuloFotos(lista.length)} · {enderecoGaleria(g)}
         </span>
       </div>
 
@@ -205,6 +205,7 @@ function PaginaGaleria() {
         marca={marca}
         proximaOrdem={proximaOrdem}
         indexarRostos={indexarRostos}
+        existentes={lista}
       />
 
       {fotos.isPending ? (

@@ -17,8 +17,10 @@ import { Campo, CLASSE_ROTULO } from "@/components/Campo";
 import { CampoData } from "@/components/CampoData";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { gerarSlug } from "@/lib/fotos";
+import { ariaErro, errosPorCampo, focarPrimeiroErro, type ErrosDeCampo } from "@/lib/validacao";
 import {
   ROTULO_STATUS_GALERIA,
+  esquemaGaleria,
   useAtualizarGaleria,
   useCriarGaleria,
   type Autoria,
@@ -67,6 +69,28 @@ function mostrarPreco(valor: number | null | undefined): string {
   return valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/** Campo da tela de cada chave do esquema, na ordem em que aparecem. */
+const ID_DO_CAMPO: [keyof DadosGaleria, string][] = [
+  ["titulo", "titulo-galeria"],
+  ["slug", "slug-galeria"],
+  ["categoria", "categoria-galeria"],
+  ["local", "local-galeria"],
+  ["cliente_nome", "cliente-galeria"],
+  ["cliente_email", "email-galeria"],
+  ["data_evento", "data-galeria"],
+  ["senha", "senha-galeria"],
+  ["descricao", "descricao-galeria"],
+  ["preco_foto", "preco-galeria"],
+  ["preco_pacote", "pacote-galeria"],
+];
+
+/** Sufixo curto que evita colisão do nome interno entre galerias de mesmo título. */
+function sufixoAleatorio(): string {
+  return Array.from(crypto.getRandomValues(new Uint8Array(3)), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+}
+
 /**
  * Criar e editar no mesmo Dialog. `galeria` nula = criação. O pai monta com
  * `key` nova a cada abertura, então o estado parte sempre do registro certo.
@@ -101,6 +125,9 @@ export function FormularioGaleria({
   const [categoria, setCategoria] = useState(galeria?.categoria ?? "");
   const [local, setLocal] = useState(galeria?.local ?? "");
   const [buscaRosto, setBuscaRosto] = useState(galeria?.busca_rosto ?? true);
+  const [downloadLiberado, setDownloadLiberado] = useState(galeria?.download_liberado ?? false);
+  const [sufixo] = useState(sufixoAleatorio);
+  const [erros, setErros] = useState<ErrosDeCampo<DadosGaleria>>({});
   const evento = tipo === "evento";
 
   const criar = useCriarGaleria(autoria);
@@ -109,9 +136,13 @@ export function FormularioGaleria({
 
   function salvar(e: React.FormEvent) {
     e.preventDefault();
+    // Galeria de cliente abre pela chave secreta; o slug fica só como nome
+    // interno, gerado do título na criação.
+    const slugFinal =
+      evento || galeria ? slug : `${gerarSlug(titulo).slice(0, 70) || "galeria"}-${sufixo}`;
     const dados: DadosGaleria = {
       titulo,
-      slug,
+      slug: slugFinal,
       descricao,
       data_evento: dataEvento,
       cliente_nome: clienteNome,
@@ -124,8 +155,24 @@ export function FormularioGaleria({
       categoria,
       local,
       busca_rosto: buscaRosto,
+      download_liberado: downloadLiberado,
     };
-    const aoErrar = (erro: Error) => toast.error(erro.message);
+    const conferido = esquemaGaleria.safeParse(dados);
+    if (!conferido.success) {
+      const porCampo = errosPorCampo(conferido.error);
+      setErros(porCampo);
+      focarPrimeiroErro(ID_DO_CAMPO.filter(([c]) => porCampo[c]).map(([, id]) => id));
+      return;
+    }
+    setErros({});
+    const aoErrar = (erro: Error) => {
+      if (erro.message.startsWith("Já existe uma galeria com este link")) {
+        setErros({ slug: erro.message });
+        focarPrimeiroErro(["slug-galeria"]);
+      } else {
+        toast.error(erro.message);
+      }
+    };
     if (galeria) {
       atualizar.mutate(
         { id: galeria.id, dados },
@@ -151,9 +198,9 @@ export function FormularioGaleria({
 
   return (
     <Dialog open={aberto} onOpenChange={(v) => !salvando && aoMudarAberto(v)}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
-        <form onSubmit={salvar} className="space-y-5">
-          <DialogHeader>
+      <DialogContent className="flex max-h-[92dvh] flex-col gap-0 p-0 sm:max-w-xl">
+        <form onSubmit={salvar} noValidate className="flex min-h-0 flex-col">
+          <DialogHeader className="border-b border-border p-5 pr-12 text-left">
             <DialogTitle>{galeria ? "Editar galeria" : "Nova galeria"}</DialogTitle>
             <DialogDescription>
               {evento
@@ -162,209 +209,243 @@ export function FormularioGaleria({
             </DialogDescription>
           </DialogHeader>
 
-          <Campo rotulo="Tipo">
-            <ControleSegmentado
-              opcoes={OPCOES_TIPO}
-              valor={tipo}
-              aoMudar={setTipo}
-              rotuloAria="Tipo de galeria"
-            />
-          </Campo>
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5">
+            <Campo rotulo="Tipo">
+              <ControleSegmentado
+                opcoes={OPCOES_TIPO}
+                valor={tipo}
+                aoMudar={setTipo}
+                rotuloAria="Tipo de galeria"
+              />
+            </Campo>
 
-          <Campo rotulo="Título" htmlFor="titulo-galeria">
-            <Input
-              id="titulo-galeria"
-              required
-              minLength={2}
-              maxLength={200}
-              autoFocus
-              placeholder={evento ? "Copa Verão de Futebol 2026" : "Casamento Ana e João"}
-              value={titulo}
-              onChange={(e) => {
-                setTitulo(e.target.value);
-                if (!slugManual) setSlug(gerarSlug(e.target.value));
-              }}
-            />
-          </Campo>
+            <Campo rotulo="Título" htmlFor="titulo-galeria" erro={erros.titulo}>
+              <Input
+                id="titulo-galeria"
+                maxLength={200}
+                {...ariaErro("titulo-galeria", erros.titulo)}
+                autoFocus
+                placeholder={evento ? "Copa Verão de Futebol 2026" : "Casamento Ana e João"}
+                value={titulo}
+                onChange={(e) => {
+                  setTitulo(e.target.value);
+                  if (!slugManual) setSlug(gerarSlug(e.target.value));
+                }}
+              />
+            </Campo>
 
-          <Campo
-            rotulo="Link da galeria"
-            htmlFor="slug-galeria"
-            dica={`Endereço: /g/${slug || "seu-link"}`}
-          >
-            <Input
-              id="slug-galeria"
-              required
-              minLength={3}
-              maxLength={80}
-              value={slug}
-              onChange={(e) => {
-                setSlugManual(true);
-                setSlug(gerarSlug(e.target.value));
-              }}
-            />
-          </Campo>
+            {evento && (
+              <Campo
+                rotulo="Endereço na vitrine"
+                htmlFor="slug-galeria"
+                dica={`/g/${slug || "nome-do-evento"}. Com senha, o evento sai da vitrine e abre só pelo link secreto.`}
+                erro={erros.slug}
+              >
+                <Input
+                  id="slug-galeria"
+                  maxLength={80}
+                  {...ariaErro("slug-galeria", erros.slug)}
+                  value={slug}
+                  onChange={(e) => {
+                    setSlugManual(true);
+                    setSlug(gerarSlug(e.target.value));
+                  }}
+                />
+              </Campo>
+            )}
 
-          {evento ? (
-            <>
+            {evento ? (
+              <>
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <Campo
+                    rotulo="Categoria"
+                    htmlFor="categoria-galeria"
+                    dica="Agrupa os eventos na vitrine."
+                  >
+                    <Input
+                      id="categoria-galeria"
+                      list="categorias-sugeridas"
+                      maxLength={60}
+                      placeholder="Futebol"
+                      value={categoria}
+                      onChange={(e) => setCategoria(e.target.value)}
+                    />
+                    <datalist id="categorias-sugeridas">
+                      {CATEGORIAS_SUGERIDAS.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </Campo>
+                  <Campo rotulo="Local" htmlFor="local-galeria">
+                    <Input
+                      id="local-galeria"
+                      maxLength={120}
+                      placeholder="Ginásio Municipal, Campinas"
+                      value={local}
+                      onChange={(e) => setLocal(e.target.value)}
+                    />
+                  </Campo>
+                </div>
+                <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                  <div className="space-y-0.5">
+                    <label htmlFor="busca-rosto-galeria" className="text-label-md text-foreground">
+                      Busca por selfie
+                    </label>
+                    <p className="text-caption text-muted-foreground">
+                      Os rostos das fotos são indexados no envio, no seu navegador. O visitante
+                      manda uma selfie e vê só as fotos em que aparece.
+                    </p>
+                  </div>
+                  <Switch
+                    id="busca-rosto-galeria"
+                    checked={buscaRosto}
+                    onCheckedChange={setBuscaRosto}
+                  />
+                </div>
+              </>
+            ) : (
               <div className="grid gap-5 sm:grid-cols-2">
+                <Campo rotulo="Cliente" htmlFor="cliente-galeria">
+                  <Input
+                    id="cliente-galeria"
+                    maxLength={120}
+                    value={clienteNome}
+                    onChange={(e) => setClienteNome(e.target.value)}
+                  />
+                </Campo>
                 <Campo
-                  rotulo="Categoria"
-                  htmlFor="categoria-galeria"
-                  dica="Agrupa os eventos na vitrine."
+                  rotulo="E-mail do cliente"
+                  htmlFor="email-galeria"
+                  erro={erros.cliente_email}
                 >
                   <Input
-                    id="categoria-galeria"
-                    list="categorias-sugeridas"
-                    maxLength={60}
-                    placeholder="Futebol"
-                    value={categoria}
-                    onChange={(e) => setCategoria(e.target.value)}
-                  />
-                  <datalist id="categorias-sugeridas">
-                    {CATEGORIAS_SUGERIDAS.map((c) => (
-                      <option key={c} value={c} />
-                    ))}
-                  </datalist>
-                </Campo>
-                <Campo rotulo="Local" htmlFor="local-galeria">
-                  <Input
-                    id="local-galeria"
-                    maxLength={120}
-                    placeholder="Ginásio Municipal, Campinas"
-                    value={local}
-                    onChange={(e) => setLocal(e.target.value)}
+                    id="email-galeria"
+                    type="email"
+                    maxLength={200}
+                    {...ariaErro("email-galeria", erros.cliente_email)}
+                    value={clienteEmail}
+                    onChange={(e) => setClienteEmail(e.target.value)}
                   />
                 </Campo>
               </div>
-              <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
-                <div className="space-y-0.5">
-                  <label htmlFor="busca-rosto-galeria" className="text-label-md text-foreground">
-                    Busca por selfie
-                  </label>
-                  <p className="text-caption text-muted-foreground">
-                    Os rostos das fotos são indexados no envio, no seu navegador. O visitante manda
-                    uma selfie e vê só as fotos em que aparece.
-                  </p>
-                </div>
-                <Switch
-                  id="busca-rosto-galeria"
-                  checked={buscaRosto}
-                  onCheckedChange={setBuscaRosto}
-                />
-              </div>
-            </>
-          ) : (
+            )}
+
             <div className="grid gap-5 sm:grid-cols-2">
-              <Campo rotulo="Cliente" htmlFor="cliente-galeria">
-                <Input
-                  id="cliente-galeria"
-                  maxLength={120}
-                  value={clienteNome}
-                  onChange={(e) => setClienteNome(e.target.value)}
+              <Campo rotulo="Data do evento" htmlFor="data-galeria">
+                <CampoData
+                  id="data-galeria"
+                  className="w-full"
+                  value={dataEvento}
+                  onChange={(e) => setDataEvento(e.target.value)}
                 />
               </Campo>
-              <Campo rotulo="E-mail do cliente" htmlFor="email-galeria">
+              <Campo
+                rotulo="Senha de acesso"
+                htmlFor="senha-galeria"
+                dica={
+                  evento
+                    ? "Deixe em branco para o evento aparecer na vitrine."
+                    : "Em branco, qualquer pessoa com o link abre."
+                }
+              >
                 <Input
-                  id="email-galeria"
-                  type="email"
-                  maxLength={200}
-                  value={clienteEmail}
-                  onChange={(e) => setClienteEmail(e.target.value)}
+                  id="senha-galeria"
+                  maxLength={60}
+                  autoComplete="off"
+                  value={senha}
+                  onChange={(e) => setSenha(e.target.value)}
                 />
               </Campo>
             </div>
-          )}
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Campo rotulo="Data do evento" htmlFor="data-galeria">
-              <CampoData
-                id="data-galeria"
-                className="w-full"
-                value={dataEvento}
-                onChange={(e) => setDataEvento(e.target.value)}
-              />
-            </Campo>
             <Campo
-              rotulo="Senha de acesso"
-              htmlFor="senha-galeria"
-              dica={
-                evento
-                  ? "Deixe em branco para o evento aparecer na vitrine."
-                  : "Em branco, qualquer pessoa com o link abre."
-              }
+              rotulo={evento ? "Descrição do evento" : "Mensagem para o cliente"}
+              htmlFor="descricao-galeria"
             >
-              <Input
-                id="senha-galeria"
-                maxLength={60}
-                autoComplete="off"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+              <Textarea
+                id="descricao-galeria"
+                rows={3}
+                maxLength={2_000}
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
               />
             </Campo>
-          </div>
 
-          <Campo
-            rotulo={evento ? "Descrição do evento" : "Mensagem para o cliente"}
-            htmlFor="descricao-galeria"
-          >
-            <Textarea
-              id="descricao-galeria"
-              rows={3}
-              maxLength={2_000}
-              value={descricao}
-              onChange={(e) => setDescricao(e.target.value)}
-            />
-          </Campo>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Campo
-              rotulo="Preço por foto (R$)"
-              htmlFor="preco-galeria"
-              dica="Zero libera o download sem pagamento."
-            >
-              <Input
-                id="preco-galeria"
-                inputMode="decimal"
-                required
-                value={precoFoto}
-                onChange={(e) => setPrecoFoto(e.target.value)}
-              />
-            </Campo>
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between gap-3">
-                <label htmlFor="pacote-galeria" className={CLASSE_ROTULO}>
-                  Vender todas as fotos (R$)
-                </label>
-                <Switch
-                  id="vende-pacote-galeria"
-                  aria-label="Vender o pacote com todas as fotos"
-                  checked={vendePacote}
-                  onCheckedChange={setVendePacote}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <Campo
+                rotulo="Preço por foto (R$)"
+                htmlFor="preco-galeria"
+                dica="Zero libera o download sem pagamento."
+                erro={erros.preco_foto}
+              >
+                <Input
+                  id="preco-galeria"
+                  inputMode="decimal"
+                  {...ariaErro("preco-galeria", erros.preco_foto)}
+                  value={precoFoto}
+                  onChange={(e) => setPrecoFoto(e.target.value)}
                 />
+              </Campo>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <label htmlFor="pacote-galeria" className={CLASSE_ROTULO}>
+                    Vender todas as fotos (R$)
+                  </label>
+                  <Switch
+                    id="vende-pacote-galeria"
+                    aria-label="Vender o pacote com todas as fotos"
+                    checked={vendePacote}
+                    onCheckedChange={setVendePacote}
+                  />
+                </div>
+                <Input
+                  id="pacote-galeria"
+                  inputMode="decimal"
+                  disabled={!vendePacote}
+                  {...ariaErro("pacote-galeria", erros.preco_pacote)}
+                  placeholder={vendePacote ? "" : "Desligado"}
+                  value={vendePacote ? precoPacote : ""}
+                  onChange={(e) => setPrecoPacote(e.target.value)}
+                />
+                {erros.preco_pacote && (
+                  <p id="pacote-galeria-erro" className="text-caption text-danger" role="alert">
+                    {erros.preco_pacote}
+                  </p>
+                )}
               </div>
-              <Input
-                id="pacote-galeria"
-                inputMode="decimal"
-                disabled={!vendePacote}
-                required={vendePacote}
-                placeholder={vendePacote ? "" : "Desligado"}
-                value={vendePacote ? precoPacote : ""}
-                onChange={(e) => setPrecoPacote(e.target.value)}
+            </div>
+
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+              <div className="space-y-0.5">
+                <label
+                  htmlFor="download-liberado-galeria"
+                  className="text-label-md text-foreground"
+                >
+                  Liberar download de todas as fotos
+                </label>
+                <p className="text-caption text-muted-foreground">
+                  Quem abre o link baixa os originais sem marca d'água, sem fazer pedido. Use para
+                  ensaio já pago.
+                </p>
+              </div>
+              <Switch
+                id="download-liberado-galeria"
+                checked={downloadLiberado}
+                onCheckedChange={setDownloadLiberado}
               />
             </div>
+
+            <Campo rotulo="Situação">
+              <ControleSegmentado
+                opcoes={OPCOES_STATUS}
+                valor={status}
+                aoMudar={setStatus}
+                rotuloAria="Situação da galeria"
+              />
+            </Campo>
           </div>
 
-          <Campo rotulo="Situação">
-            <ControleSegmentado
-              opcoes={OPCOES_STATUS}
-              valor={status}
-              aoMudar={setStatus}
-              rotuloAria="Situação da galeria"
-            />
-          </Campo>
-
-          <DialogFooter>
+          <DialogFooter className="border-t border-border p-4">
             <Button
               type="button"
               variant="outline"

@@ -18,6 +18,7 @@ import { useVitrine, type EventoPublico } from "@/features/vitrine/api";
 import { brl, dataBR } from "@/lib/format";
 import { rotuloFotos, urlPrevia } from "@/lib/fotos";
 import { BRAND } from "@/config/brand";
+import { Miniatura } from "@/components/Miniatura";
 
 export const Route = createFileRoute("/eventos")({
   ssr: false,
@@ -150,7 +151,7 @@ function CartaoEvento({ evento }: { evento: EventoPublico }) {
       <Card className="h-full overflow-hidden p-0 transition-colors group-hover:border-primary">
         <div className="relative aspect-[4/3] bg-muted">
           {evento.capa ? (
-            <img
+            <Miniatura
               src={urlPrevia(evento.capa)}
               alt=""
               loading="lazy"

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Enums, Tables } from "@/integrations/supabase/types";
 import { BUCKET_ORIGINAIS, BUCKET_PREVIAS } from "@/lib/fotos";
 import { canvasParaAnalise, rostosDaImagem, vetorParaBanco } from "@/lib/rostos";
-import { extensaoDe, processarFoto } from "./imagens";
+import { extensaoDaPrevia, extensaoDe, processarFoto } from "./imagens";
 
 export type Galeria = Tables<"galerias">;
 export type Foto = Tables<"fotos">;
@@ -12,6 +12,8 @@ export type StatusGaleria = Enums<"status_galeria">;
 export type TipoGaleria = Enums<"tipo_galeria">;
 export type GaleriaComContagem = Galeria & {
   capa: { caminho_miniatura: string } | null;
+  /** Primeira foto da galeria: a capa enquanto o fotógrafo não escolhe outra. */
+  primeira: { caminho_miniatura: string }[];
   fotos: { count: number }[];
   pedidos: { count: number }[];
 };
@@ -60,6 +62,7 @@ export const esquemaGaleria = z.object({
   categoria: z.string().trim().max(60, "A categoria pode ter no máximo 60 caracteres."),
   local: z.string().trim().max(120, "O local pode ter no máximo 120 caracteres."),
   busca_rosto: z.boolean(),
+  download_liberado: z.boolean(),
 });
 
 export type DadosGaleria = z.infer<typeof esquemaGaleria>;
@@ -86,6 +89,7 @@ function paraBanco(d: DadosGaleria) {
     categoria: d.tipo === "evento" ? d.categoria : "",
     local: d.local,
     busca_rosto: d.busca_rosto,
+    download_liberado: d.download_liberado,
   };
 }
 
@@ -112,9 +116,11 @@ export function useGalerias() {
       const { data, error } = await supabase
         .from("galerias")
         .select(
-          "*, capa:fotos!galerias_capa_foto_id_fkey(caminho_miniatura), fotos!fotos_galeria_id_fkey(count), pedidos(count)",
+          "*, capa:fotos!galerias_capa_foto_id_fkey(caminho_miniatura), primeira:fotos!fotos_galeria_id_fkey(caminho_miniatura), fotos!fotos_galeria_id_fkey(count), pedidos(count)",
         )
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .order("ordem", { referencedTable: "primeira" })
+        .limit(1, { referencedTable: "primeira" });
       if (error) throw erroLegivel(error.message);
       return data ?? [];
     },
@@ -183,6 +189,30 @@ export function useAtualizarGaleria() {
         .select("id");
       if (error) throw erroLegivel(error.message);
       // Fora da policy o update não afeta linha nenhuma, sem erro.
+      if (!data || data.length === 0) {
+        throw new Error("Você não tem permissão para alterar esta galeria.");
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_GALERIAS }),
+  });
+}
+
+/** Chave nova do link (16 caracteres hex): o link antigo para de abrir. */
+function novaChave(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export function useGerarNovoLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (galeriaId: string) => {
+      const { data, error } = await supabase
+        .from("galerias")
+        .update({ chave: novaChave() })
+        .eq("id", galeriaId)
+        .select("id");
+      if (error) throw erroLegivel(error.message);
       if (!data || data.length === 0) {
         throw new Error("Você não tem permissão para alterar esta galeria.");
       }
@@ -337,7 +367,8 @@ export async function enviarFoto({
   arquivo: File;
   galeria: Pick<Galeria, "id">;
   autoria: Autoria;
-  marca: string;
+  /** Texto da marca d'água; nulo = prévia sem marca. */
+  marca: string | null;
   ordem: number;
   /** Galeria de evento com busca por selfie: grava os rostos da foto. */
   indexarRostos: boolean;
@@ -353,8 +384,8 @@ export async function enviarFoto({
   const id = crypto.randomUUID();
   const caminhos = {
     caminho_original: `${pasta}/${id}.${extensaoDe(arquivo)}`,
-    caminho_previa: `${pasta}/${id}-previa.jpg`,
-    caminho_miniatura: `${pasta}/${id}-mini.jpg`,
+    caminho_previa: `${pasta}/${id}-previa.${extensaoDaPrevia(previa)}`,
+    caminho_miniatura: `${pasta}/${id}-mini.${extensaoDaPrevia(miniatura)}`,
   };
 
   const envios = await Promise.all([
@@ -362,11 +393,11 @@ export async function enviarFoto({
       .from(BUCKET_ORIGINAIS)
       .upload(caminhos.caminho_original, arquivo, { contentType: arquivo.type }),
     supabase.storage.from(BUCKET_PREVIAS).upload(caminhos.caminho_previa, previa, {
-      contentType: "image/jpeg",
+      contentType: previa.type,
       cacheControl: "31536000",
     }),
     supabase.storage.from(BUCKET_PREVIAS).upload(caminhos.caminho_miniatura, miniatura, {
-      contentType: "image/jpeg",
+      contentType: miniatura.type,
       cacheControl: "31536000",
     }),
   ]);

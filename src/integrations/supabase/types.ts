@@ -18,6 +18,7 @@ export type Database = {
           id: number
           instrucoes_pagamento: string
           logo_caminho: string
+          marca_dagua_ativa: boolean
           nome_exibicao: string
           texto_marca_dagua: string
           updated_at: string
@@ -30,6 +31,7 @@ export type Database = {
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
+          marca_dagua_ativa?: boolean
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string
@@ -42,6 +44,7 @@ export type Database = {
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
+          marca_dagua_ativa?: boolean
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string
@@ -130,11 +133,13 @@ export type Database = {
           busca_rosto: boolean
           capa_foto_id: string | null
           categoria: string
+          chave: string
           cliente_email: string
           cliente_nome: string
           created_at: string
           data_evento: string | null
           descricao: string
+          download_liberado: boolean
           id: string
           local: string
           organizacao_id: string | null
@@ -152,11 +157,13 @@ export type Database = {
           busca_rosto?: boolean
           capa_foto_id?: string | null
           categoria?: string
+          chave?: string
           cliente_email?: string
           cliente_nome?: string
           created_at?: string
           data_evento?: string | null
           descricao?: string
+          download_liberado?: boolean
           id?: string
           local?: string
           organizacao_id?: string | null
@@ -174,11 +181,13 @@ export type Database = {
           busca_rosto?: boolean
           capa_foto_id?: string | null
           categoria?: string
+          chave?: string
           cliente_email?: string
           cliente_nome?: string
           created_at?: string
           data_evento?: string | null
           descricao?: string
+          download_liberado?: boolean
           id?: string
           local?: string
           organizacao_id?: string | null
@@ -325,6 +334,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      limites_acesso: {
+        Row: {
+          acao: string
+          chave: string
+          criado_em: string
+          id: number
+        }
+        Insert: {
+          acao: string
+          chave: string
+          criado_em?: string
+          id?: never
+        }
+        Update: {
+          acao?: string
+          chave?: string
+          criado_em?: string
+          id?: never
+        }
+        Relationships: []
       }
       organizacao_membros: {
         Row: {
@@ -595,7 +625,7 @@ export type Database = {
           _slug: string
           _telefone: string
         }
-        Returns: string
+        Returns: string | null
       }
       definir_cadastro_aberto: { Args: { _aberto: boolean }; Returns: boolean }
       definir_token_capi: { Args: { _landing: string; _token: string }; Returns: undefined }

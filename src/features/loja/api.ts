@@ -12,6 +12,7 @@ export const CHAVE_LOJA = ["loja"] as const;
 export const esquemaLoja = z.object({
   nome_exibicao: z.string().trim().max(120, "O nome pode ter no máximo 120 caracteres."),
   texto_marca_dagua: z.string().trim().max(60, "A marca d'água pode ter no máximo 60 caracteres."),
+  marca_dagua_ativa: z.boolean(),
   chave_pix: z.string().trim().max(140, "A chave Pix pode ter no máximo 140 caracteres."),
   instrucoes_pagamento: z
     .string()
@@ -45,11 +46,18 @@ export function useConfiguracoesLoja() {
   });
 }
 
-/** Texto da marca d'água: o configurado, o nome da loja ou o da organização. */
+/**
+ * Texto da marca d'água nas prévias: o configurado, o nome da loja ou o da
+ * organização. Nulo quando o dono desligou a marca d'água.
+ */
 export function textoMarcaDagua(
-  config: ConfiguracoesLoja | null | undefined,
+  config:
+    | Pick<ConfiguracoesLoja, "marca_dagua_ativa" | "texto_marca_dagua" | "nome_exibicao">
+    | null
+    | undefined,
   nomeOrganizacao: string | undefined,
-): string {
+): string | null {
+  if (config && !config.marca_dagua_ativa) return null;
   return (
     config?.texto_marca_dagua.trim() ||
     config?.nome_exibicao.trim() ||
