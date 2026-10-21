@@ -57,6 +57,13 @@ export function ModeloEditorial({ d }: { d: DadosLanding }) {
           >
             {c.titulo}
           </h1>
+          <LinkCta
+            href={d.linkCta}
+            aoClicar={d.aoClicarCta}
+            className="mt-10 inline-flex items-center justify-center border border-white px-8 py-3 text-sm tracking-wide text-white transition-colors hover:bg-white hover:text-black"
+          >
+            {c.cta_texto}
+          </LinkCta>
         </div>
       </section>
 

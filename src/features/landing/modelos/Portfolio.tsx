@@ -38,6 +38,9 @@ export function ModeloPortfolio({ d }: { d: DadosLanding }) {
           )}
         </div>
         <nav className="flex items-center gap-5 text-sm">
+          <a href="#sobre" className="hidden md:inline">
+            Sobre
+          </a>
           <a href="#trabalhos" className="hidden md:inline">
             Trabalhos
           </a>
@@ -61,6 +64,17 @@ export function ModeloPortfolio({ d }: { d: DadosLanding }) {
           {c.titulo}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base opacity-70">{c.subtitulo}</p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <LinkCta href={d.linkCta} aoClicar={d.aoClicarCta} className={botao}>
+            {c.cta_texto} <ArrowRight className="size-4" />
+          </LinkCta>
+          <a
+            href="#eventos"
+            className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--lp-texto)_25%,transparent)] px-6 py-3 text-sm font-medium"
+          >
+            Ver eventos
+          </a>
+        </div>
         {/* Três fotos em leque, como polaroides sobre a mesa. */}
         <div className="mx-auto mt-12 flex max-w-3xl items-end justify-center">
           {[-7, 0, 7].map((giro, i) => (
@@ -75,15 +89,33 @@ export function ModeloPortfolio({ d }: { d: DadosLanding }) {
         </div>
       </section>
 
-      <section id="trabalhos" className="px-3 py-16 md:px-6">
-        <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <span className={etiqueta}>Trabalhos</span>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
-              {c.sobre_titulo}
-            </h2>
-            <p className="mt-2 max-w-xl text-sm opacity-70">{c.sobre_texto}</p>
+      <section id="sobre" className="px-3 pt-16 md:px-6">
+        <div
+          className={`${cartao} grid items-center gap-10 px-5 py-12 md:grid-cols-[1fr_1.3fr] md:px-12`}
+        >
+          {/* Retrato em moldura de polaroide, como as fotos da capa. */}
+          <div className="mx-auto w-full max-w-xs -rotate-2 rounded-lg bg-white p-2.5 shadow-xl">
+            <Foto src={fotos.sobre ?? fotoDa(galeria, 2)} className="aspect-[4/5] w-full rounded" />
           </div>
+          <div className="space-y-5">
+            <span className={etiqueta}>Sobre</span>
+            <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">{c.sobre_titulo}</h2>
+            <p className="max-w-xl whitespace-pre-line leading-relaxed opacity-75">
+              {c.sobre_texto}
+            </p>
+            <LinkCta href={d.linkCta} aoClicar={d.aoClicarCta} className={botao}>
+              {c.cta_texto} <ArrowRight className="size-4" />
+            </LinkCta>
+          </div>
+        </div>
+      </section>
+
+      <section id="trabalhos" className="px-3 py-16 md:px-6">
+        <div className="mb-8">
+          <span className={etiqueta}>Trabalhos</span>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+            Alguns trabalhos
+          </h2>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {[0, 1, 2, 3].map((i) => (
