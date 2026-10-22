@@ -132,9 +132,41 @@ const diagnosticoPagamento = z.object({
     .nullable(),
   email_configurado: z.boolean(),
   email_remetente: z.string(),
+  // Opcional: banco sem a migration `pagamento_ajustes` devolve sem ele.
+  email_testado: z.boolean().default(false),
 });
 
 export type DiagnosticoPagamento = z.infer<typeof diagnosticoPagamento>;
+
+/** O Resend só envia de domínio verificado do próprio fotógrafo. */
+const DOMINIOS_GRATUITOS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "hotmail.com",
+  "hotmail.com.br",
+  "outlook.com",
+  "outlook.com.br",
+  "live.com",
+  "msn.com",
+  "yahoo.com",
+  "yahoo.com.br",
+  "icloud.com",
+  "me.com",
+  "mac.com",
+  "bol.com.br",
+  "uol.com.br",
+  "terra.com.br",
+  "ig.com.br",
+  "proton.me",
+  "protonmail.com",
+  "aol.com",
+  "gmx.com",
+  "zoho.com",
+]);
+
+export function ehEmailGratuito(email: string): boolean {
+  return DOMINIOS_GRATUITOS.has(email.trim().toLowerCase().split("@")[1] ?? "");
+}
 
 const CHAVE_PAGAMENTO = [...CHAVE_LOJA, "pagamento"] as const;
 
@@ -204,13 +236,18 @@ export function useConfigurarEmail() {
   });
 }
 
-/** Envia um e-mail de teste para o dono; devolve o endereço que recebeu. */
+/**
+ * Envia um e-mail de teste para o dono; devolve o endereço que recebeu. O
+ * teste aceito é o que liga o envio automático.
+ */
 export function useEmailTeste() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
       const { data, error } = await supabase.rpc("enviar_email_teste");
       if (error) throw new Error(error.message);
       return data;
     },
+    onSettled: () => qc.invalidateQueries({ queryKey: CHAVE_PAGAMENTO }),
   });
 }
