@@ -282,12 +282,39 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
     );
   }
 
-  function testar() {
+  // O teste usa o que está gravado: o que foi digitado e não salvo vai junto.
+  const alterado =
+    chave.trim() !== "" ||
+    remetente.trim().toLowerCase() !== d.email_remetente ||
+    (pedeUrl && url.trim() !== "");
+
+  function enviarTeste() {
     teste.mutate(undefined, {
       onSuccess: (para) =>
         toast.success(`E-mail de teste enviado para ${para}. O envio automático está ligado.`),
       onError: (erro: Error) => toast.error(erro.message),
     });
+  }
+
+  function testar() {
+    if (!alterado) {
+      enviarTeste();
+      return;
+    }
+    if (gratuito) {
+      document.getElementById("remetente")?.focus();
+      return;
+    }
+    configurar.mutate(
+      { chave: chave.trim() ? chave.trim() : null, remetente, urlPublica: pedeUrl ? url : null },
+      {
+        onSuccess: () => {
+          setChave("");
+          enviarTeste();
+        },
+        onError: (erro: Error) => toast.error(erro.message),
+      },
+    );
   }
 
   return (
@@ -373,9 +400,14 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
           </Campo>
         )}
         <div className="flex flex-wrap justify-end gap-2">
-          {d.email_configurado && (
-            <Button type="button" variant="outline" disabled={teste.isPending} onClick={testar}>
-              {teste.isPending ? (
+          {(d.email_configurado || chave.trim() !== "") && remetente.trim() !== "" && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={teste.isPending || configurar.isPending}
+              onClick={testar}
+            >
+              {teste.isPending || configurar.isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
                 <Mail className="size-4" />
