@@ -13,6 +13,7 @@ import {
   useConfigurarEmail,
   useConfigurarPagamento,
   useDiagnosticoPagamento,
+  ehEmailGratuito,
   useEmailTeste,
   type DiagnosticoPagamento,
   type Gateway,
@@ -254,17 +255,26 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
   const pedeUrl = !d.url_publica;
   const [url, setUrl] = useState(d.url_publica || window.location.origin);
 
+  const gratuito = ehEmailGratuito(remetente);
+  const ativo = d.email_configurado && d.email_testado;
+
   function salvar(e: React.FormEvent) {
     e.preventDefault();
+    if (gratuito) {
+      document.getElementById("remetente")?.focus();
+      return;
+    }
     configurar.mutate(
       { chave: chave.trim() ? chave.trim() : null, remetente, urlPublica: pedeUrl ? url : null },
       {
         onSuccess: (r) => {
           setChave("");
           toast.success(
-            r.email_configurado
-              ? "E-mail automático ativo."
-              : "E-mail automático salvo, mas incompleto.",
+            !r.email_configurado
+              ? "E-mail automático salvo, mas incompleto."
+              : r.email_testado
+                ? "E-mail automático salvo."
+                : "Salvo. Agora envie o e-mail de teste para ligar o envio.",
           );
         },
         onError: (erro: Error) => toast.error(erro.message),
@@ -274,7 +284,8 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
 
   function testar() {
     teste.mutate(undefined, {
-      onSuccess: (para) => toast.success(`E-mail de teste enviado para ${para}.`),
+      onSuccess: (para) =>
+        toast.success(`E-mail de teste enviado para ${para}. O envio automático está ligado.`),
       onError: (erro: Error) => toast.error(erro.message),
     });
   }
@@ -290,10 +301,18 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
             domínio e gere uma chave de API.
           </p>
         </div>
-        <Badge variant={d.email_configurado ? "success" : "secondary"}>
-          {d.email_configurado ? "Ativo" : "Desligado"}
+        <Badge variant={ativo ? "success" : d.email_configurado ? "warning" : "secondary"}>
+          {ativo ? "Ativo" : d.email_configurado ? "Falta testar" : "Desligado"}
         </Badge>
       </div>
+
+      {d.email_configurado && !d.email_testado && (
+        <div className="flex items-start gap-2 rounded-lg bg-warning-soft p-3 text-sm text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          Envie o e-mail de teste. O envio para os compradores só liga depois que o Resend aceitar o
+          teste.
+        </div>
+      )}
 
       <form onSubmit={salvar} className="space-y-5">
         <Campo
@@ -319,7 +338,12 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
         <Campo
           rotulo="E-mail de envio"
           htmlFor="remetente"
-          dica="Precisa ser de um domínio verificado no Resend. O nome exibido é o da loja."
+          dica="Precisa ser de um domínio seu, verificado no Resend. O nome exibido é o da loja."
+          erro={
+            gratuito
+              ? "Gmail, Hotmail e afins não podem ser remetente. Use um e-mail do seu domínio, como fotos@seudominio.com.br."
+              : undefined
+          }
         >
           <Input
             id="remetente"
@@ -329,6 +353,7 @@ function CartaoEmail({ diagnostico: d }: { diagnostico: DiagnosticoPagamento }) 
             value={remetente}
             onChange={(e) => setRemetente(e.target.value)}
             disabled={configurar.isPending}
+            aria-invalid={gratuito ? true : undefined}
           />
         </Campo>
         {pedeUrl && (

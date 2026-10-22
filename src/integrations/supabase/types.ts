@@ -66,6 +66,7 @@ export type Database = {
           cor_primaria: string
           cor_secundaria: string
           email_remetente: string
+          email_testado_em: string | null
           gateway: string
           id: number
           instrucoes_pagamento: string
@@ -83,6 +84,7 @@ export type Database = {
           cor_primaria?: string
           cor_secundaria?: string
           email_remetente?: string
+          email_testado_em?: string | null
           gateway?: string
           id?: number
           instrucoes_pagamento?: string
@@ -100,6 +102,7 @@ export type Database = {
           cor_primaria?: string
           cor_secundaria?: string
           email_remetente?: string
+          email_testado_em?: string | null
           gateway?: string
           id?: number
           instrucoes_pagamento?: string

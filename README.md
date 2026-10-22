@@ -149,7 +149,11 @@ Para ligar o repositório a um Worker (Workers & Pages → Create → Import a r
   e precisa ser https.
 - Pedido pago (pelo gateway, à mão ou grátis) manda o link das fotos ao comprador pelo Resend
   (`pg_net`), uma vez; o detalhe do pedido permite reenviar. O remetente precisa ser de um domínio
-  verificado no Resend.
+  verificado no Resend (Gmail, Hotmail e afins são recusados), e o envio só liga depois de um
+  e-mail de teste aceito; trocar a chave ou o remetente pede o teste de novo.
+- Asaas: o sistema cria o próprio cliente (`externalReference = fotovenda`, notificações do Asaas
+  desligadas) em vez de reaproveitar um cliente da conta, que pode ter notificações cobradas como
+  mensageria.
 - Avisos recebidos ficam em `pagamentos_eventos` (90 dias). Estorno e chargeback não voltam o
   pedido sozinhos: cancele em Pedidos.
 
@@ -174,6 +178,7 @@ supabase/migrations/20261022120000_revisao_seguranca.sql link secreto, limites, 
 supabase/migrations/20261023120000_remover_busca_selfie.sql tira a busca por selfie e apaga os rostos
 supabase/migrations/20261024120000_landing_formulario_logo.sql formulário da landing e logo para fundo escuro
 supabase/migrations/20261025120000_pagamento_online.sql   Asaas, Mercado Pago, webhook e e-mail das fotos
+supabase/migrations/20261026120000_pagamento_ajustes.sql  cliente próprio no Asaas e e-mail só depois do teste
 src/routes/api.pagamentos.$gateway.ts                    webhook dos gateways
 ```
 

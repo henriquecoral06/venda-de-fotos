@@ -785,6 +785,18 @@ begin
     raise exception 'RLS FALHOU: configuração do Asaas errada ou com a chave: %', j;
   end if;
   perform public.configurar_email('re_rls', 'fotos@exemplo.test', null);
+  begin
+    perform public.configurar_email(null, 'ana@gmail.com', null);
+    raise exception 'RLS FALHOU: remetente do Gmail aceito';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  if (public.diagnostico_pagamento() ->> 'email_testado')::boolean then
+    raise exception 'RLS FALHOU: chave nova do Resend já veio como testada';
+  end if;
+  -- O teste real chama o Resend; aqui só marca como aprovado.
+  perform set_config('role', 'none', true);
+  update public.configuracoes_loja set email_testado_em = now() where id = 1;
 
   perform set_config('role', 'none', true);
   perform set_config('request.jwt.claims', '{"role":"anon"}', true);
