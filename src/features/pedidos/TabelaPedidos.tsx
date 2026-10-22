@@ -1,7 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Tabela, type ColunaTabela, type SelecaoTabela } from "@/components/Tabela";
+import {
+  Tabela,
+  type ColunaTabela,
+  type PaginacaoTabela,
+  type SelecaoTabela,
+} from "@/components/Tabela";
 import { brl, dataHoraBR } from "@/lib/format";
 import { ROTULO_STATUS_PEDIDO, VARIANTE_STATUS_PEDIDO, type PedidoComGaleria } from "./api";
 
@@ -10,10 +15,14 @@ export function TabelaPedidos({
   aoAbrir,
   compacta = false,
   selecao,
+  paginacao,
+  vazio = "Nenhum pedido neste filtro.",
 }: {
   pedidos: PedidoComGaleria[];
   aoAbrir: (pedido: PedidoComGaleria) => void;
   selecao?: SelecaoTabela<PedidoComGaleria>;
+  paginacao?: PaginacaoTabela;
+  vazio?: string | undefined;
   /** Sem rodapé de total e sem a coluna de galeria (lista curta do início). */
   compacta?: boolean;
 }) {
@@ -87,8 +96,9 @@ export function TabelaPedidos({
         linhas={pedidos}
         chaveLinha={(p) => p.id}
         ordenacaoInicial={{ chave: "created_at", direcao: "desc" }}
-        vazio="Nenhum pedido neste filtro."
+        vazio={vazio}
         {...(selecao ? { selecao } : {})}
+        {...(paginacao ? { paginacao } : {})}
         {...(compacta
           ? {}
           : { rodape: { cliente_nome: "Total pago", valor_total: brl(totalPago) } })}
