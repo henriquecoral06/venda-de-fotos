@@ -25,6 +25,7 @@ begin
   delete from public.organizacoes;
   -- O remix copia a estrutura, não os dados: some a linha única de configurações.
   delete from public.configuracoes_loja;
+  delete from public.loja_segredos;
 
   -- ── simula a cópia ──────────────────────────────────────────────────────
   drop trigger if exists on_auth_user_created on auth.users;
@@ -52,6 +53,8 @@ begin
   -- 0. linhas iniciais: configurações da loja e os dois buckets
   select count(*) into n from public.configuracoes_loja where id = 1;
   if n <> 1 then raise exception 'REPARO FALHOU: linha de configuracoes_loja não voltou'; end if;
+  select count(*) into n from public.loja_segredos where id = 1 and webhook_segredo <> '';
+  if n <> 1 then raise exception 'REPARO FALHOU: linha de loja_segredos não voltou com o segredo'; end if;
   select count(*) into n from storage.buckets where id in ('previas', 'originais', 'marca');
   if n <> 3 then raise exception 'REPARO FALHOU: % buckets, esperado 3', n; end if;
 
@@ -93,6 +96,15 @@ begin
      or has_table_privilege('anon', 'public.landing_pages', 'SELECT')
      or has_table_privilege('anon', 'public.landing_segredos', 'SELECT')
      or has_table_privilege('authenticated', 'public.landing_segredos', 'SELECT')
+     or has_table_privilege('anon', 'public.loja_segredos', 'SELECT')
+     or has_table_privilege('authenticated', 'public.loja_segredos', 'SELECT')
+     or has_table_privilege('authenticated', 'public.cobrancas', 'SELECT')
+     or has_table_privilege('authenticated', 'public.pagamentos_eventos', 'SELECT')
+     or has_column_privilege('authenticated', 'public.configuracoes_loja', 'gateway', 'UPDATE')
+     or has_column_privilege('authenticated', 'public.pedidos', 'pago_via', 'UPDATE')
+     or has_function_privilege('anon', 'public.asaas_chamar(text, text, jsonb)', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.confirmar_pagamento_gateway(text, text)', 'EXECUTE')
+     or has_function_privilege('anon', 'public.configurar_pagamento(text, text, text)', 'EXECUTE')
      or has_table_privilege('anon', 'public.limites_acesso', 'SELECT')
      or has_table_privilege('anon', 'public.landing_contatos', 'SELECT')
      or has_table_privilege('authenticated', 'public.landing_contatos', 'INSERT')
@@ -138,7 +150,10 @@ begin
           and has_column_privilege('authenticated', 'public.configuracoes_loja', 'chave_pix', 'UPDATE')
           and has_column_privilege('authenticated', 'public.configuracoes_loja', 'cor_primaria', 'UPDATE')
           and has_column_privilege('authenticated', 'public.configuracoes_loja', 'logo_caminho', 'UPDATE')
-          and has_table_privilege('authenticated', 'public.landing_pages', 'UPDATE')) then
+          and has_table_privilege('authenticated', 'public.landing_pages', 'UPDATE')
+          and has_function_privilege('authenticated', 'public.configurar_pagamento(text, text, text)', 'EXECUTE')
+          and has_function_privilege('anon', 'public.gerar_cobranca(text, text, text)', 'EXECUTE')
+          and has_function_privilege('anon', 'public.receber_webhook_pagamento(text, text, jsonb)', 'EXECUTE')) then
     raise exception 'REPARO FALHOU: authenticated perdeu privilégio nas tabelas da venda';
   end if;
   if not has_table_privilege('service_role', 'public.organizacao_membros', 'INSERT') then

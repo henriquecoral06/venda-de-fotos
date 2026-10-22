@@ -10,11 +10,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      cobrancas: {
+        Row: {
+          created_at: string
+          expira_em: string
+          externo_id: string
+          gateway: string
+          id: string
+          link: string
+          metodo: string
+          pedido_id: string
+          pix_copia_cola: string
+          pix_qrcode: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          expira_em: string
+          externo_id: string
+          gateway: string
+          id?: string
+          link?: string
+          metodo: string
+          pedido_id: string
+          pix_copia_cola?: string
+          pix_qrcode?: string
+          valor: number
+        }
+        Update: {
+          created_at?: string
+          expira_em?: string
+          externo_id?: string
+          gateway?: string
+          id?: string
+          link?: string
+          metodo?: string
+          pedido_id?: string
+          pix_copia_cola?: string
+          pix_qrcode?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cobrancas_pedido_id_fkey"
+            columns: ["pedido_id"]
+            isOneToOne: false
+            referencedRelation: "pedidos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_loja: {
         Row: {
           chave_pix: string
           cor_primaria: string
           cor_secundaria: string
+          email_remetente: string
+          gateway: string
           id: number
           instrucoes_pagamento: string
           logo_caminho: string
@@ -23,12 +75,15 @@ export type Database = {
           nome_exibicao: string
           texto_marca_dagua: string
           updated_at: string
+          url_publica: string
           whatsapp: string
         }
         Insert: {
           chave_pix?: string
           cor_primaria?: string
           cor_secundaria?: string
+          email_remetente?: string
+          gateway?: string
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
@@ -37,12 +92,15 @@ export type Database = {
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string
+          url_publica?: string
           whatsapp?: string
         }
         Update: {
           chave_pix?: string
           cor_primaria?: string
           cor_secundaria?: string
+          email_remetente?: string
+          gateway?: string
           id?: number
           instrucoes_pagamento?: string
           logo_caminho?: string
@@ -51,6 +109,7 @@ export type Database = {
           nome_exibicao?: string
           texto_marca_dagua?: string
           updated_at?: string
+          url_publica?: string
           whatsapp?: string
         }
         Relationships: []
@@ -391,6 +450,33 @@ export type Database = {
         }
         Relationships: []
       }
+      loja_segredos: {
+        Row: {
+          asaas_chave: string
+          id: number
+          mercadopago_token: string
+          resend_chave: string
+          updated_at: string
+          webhook_segredo: string
+        }
+        Insert: {
+          asaas_chave?: string
+          id?: number
+          mercadopago_token?: string
+          resend_chave?: string
+          updated_at?: string
+          webhook_segredo?: string
+        }
+        Update: {
+          asaas_chave?: string
+          id?: number
+          mercadopago_token?: string
+          resend_chave?: string
+          updated_at?: string
+          webhook_segredo?: string
+        }
+        Relationships: []
+      }
       organizacao_membros: {
         Row: {
           created_at: string
@@ -448,6 +534,33 @@ export type Database = {
         }
         Relationships: []
       }
+      pagamentos_eventos: {
+        Row: {
+          corpo: Json
+          created_at: string
+          externo_id: string
+          gateway: string
+          id: string
+          resultado: string
+        }
+        Insert: {
+          corpo?: Json
+          created_at?: string
+          externo_id?: string
+          gateway: string
+          id?: string
+          resultado: string
+        }
+        Update: {
+          corpo?: Json
+          created_at?: string
+          externo_id?: string
+          gateway?: string
+          id?: string
+          resultado?: string
+        }
+        Relationships: []
+      }
       pedido_itens: {
         Row: {
           foto_id: string
@@ -488,11 +601,13 @@ export type Database = {
           cliente_telefone: string
           codigo: string
           created_at: string
+          email_enviado_em: string | null
           galeria_id: string
           id: string
           organizacao_id: string | null
           pacote_completo: boolean
           pago_em: string | null
+          pago_via: string
           status: Database["public"]["Enums"]["status_pedido"]
           updated_at: string
           user_id: string
@@ -504,11 +619,13 @@ export type Database = {
           cliente_telefone?: string
           codigo?: string
           created_at?: string
+          email_enviado_em?: string | null
           galeria_id: string
           id?: string
           organizacao_id?: string | null
           pacote_completo?: boolean
           pago_em?: string | null
+          pago_via?: string
           status?: Database["public"]["Enums"]["status_pedido"]
           updated_at?: string
           user_id: string
@@ -520,11 +637,13 @@ export type Database = {
           cliente_telefone?: string
           codigo?: string
           created_at?: string
+          email_enviado_em?: string | null
           galeria_id?: string
           id?: string
           organizacao_id?: string | null
           pacote_completo?: boolean
           pago_em?: string | null
+          pago_via?: string
           status?: Database["public"]["Enums"]["status_pedido"]
           updated_at?: string
           user_id?: string
@@ -583,6 +702,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      conferir_pagamento: { Args: { _codigo: string }; Returns: string | null }
+      configurar_email: {
+        Args: { _chave: string | null; _remetente: string; _url_publica: string | null }
+        Returns: Json
+      }
+      configurar_pagamento: {
+        Args: { _chave: string | null; _gateway: string; _url_publica: string }
+        Returns: Json
+      }
       contas_fora_da_organizacao: {
         Args: Record<PropertyKey, never>
         Returns: { email: string; nome: string; user_id: string }[]
@@ -601,6 +729,7 @@ export type Database = {
       }
       definir_cadastro_aberto: { Args: { _aberto: boolean }; Returns: boolean }
       definir_token_capi: { Args: { _landing: string; _token: string }; Returns: undefined }
+      diagnostico_pagamento: { Args: Record<PropertyKey, never>; Returns: Json }
       enviar_contato_landing: { Args: { _dados: Json; _slug: string }; Returns: boolean }
       enviar_evento_meta: {
         Args: {
@@ -615,11 +744,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      enviar_email_teste: { Args: Record<PropertyKey, never>; Returns: string }
       eventos_publicos: { Args: Record<PropertyKey, never>; Returns: Json }
       foto_original_liberada: { Args: { _caminho: string }; Returns: boolean }
       galeria_publica: { Args: { _senha?: string; _slug: string }; Returns: Json }
       garantir_instalacao: { Args: Record<PropertyKey, never>; Returns: boolean }
       garantir_organizacao: { Args: Record<PropertyKey, never>; Returns: boolean }
+      gerar_cobranca: { Args: { _codigo: string; _cpf: string; _metodo: string }; Returns: Json }
       landing_publica: { Args: { _slug: string }; Returns: Json }
       landing_tem_token_capi: { Args: { _landing: string }; Returns: boolean }
       mesma_organizacao: { Args: { _user: string }; Returns: boolean }
@@ -630,6 +761,11 @@ export type Database = {
       minha_organizacao: { Args: Record<PropertyKey, never>; Returns: string }
       pedido_publico: { Args: { _codigo: string }; Returns: Json }
       readmitir_membro: { Args: { _user_id: string }; Returns: undefined }
+      receber_webhook_pagamento: {
+        Args: { _corpo: Json; _gateway: string; _segredo: string }
+        Returns: string
+      }
+      reenviar_email_pedido: { Args: { _pedido: string }; Returns: undefined }
       remover_membro: { Args: { _user_id: string }; Returns: undefined }
     }
     Enums: {
