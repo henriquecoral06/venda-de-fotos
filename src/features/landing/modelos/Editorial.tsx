@@ -11,6 +11,7 @@ import {
   TIPOGRAFIA_LP,
   capaEvento,
   detalheEvento,
+  enquadramentoCapa,
   fotoDa,
   logoPara,
   variaveisCores,
@@ -69,10 +70,15 @@ export function ModeloEditorial({ d }: { d: DadosLanding }) {
           cada imagem; no celular, só a primeira. Título por cima em branco. */}
       <section className="relative h-[88vh] min-h-[480px] overflow-hidden bg-black">
         <div className="grid size-full grid-cols-1 md:grid-cols-2">
-          <Foto src={fotoDa(fotos.capa, 0)} className="size-full object-center opacity-85" />
+          <Foto
+            src={fotoDa(fotos.capa, 0)}
+            style={enquadramentoCapa(c.capa_foco)}
+            className="size-full opacity-85"
+          />
           <Foto
             src={fotoDa(fotos.capa, 1)}
-            className="hidden size-full object-center opacity-85 md:block"
+            style={enquadramentoCapa(c.capa_foco)}
+            className="hidden size-full opacity-85 md:block"
           />
         </div>
         <div className="absolute inset-0 bg-black/25" />

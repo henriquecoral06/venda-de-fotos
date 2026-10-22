@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Campo } from "@/components/Campo";
@@ -405,6 +406,31 @@ export function AbaFotos({
         organizacaoId={organizacaoId}
         aoMudar={(capa) => mudarImagens({ capa })}
       />
+      {(e.modelo === "editorial" || e.modelo === "classico") && (
+        <div className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <label id="lp-capa-foco-rotulo" className="text-label-md text-foreground">
+              Enquadramento da capa
+            </label>
+            <span className="text-caption tabular-nums text-muted-foreground">
+              {e.conteudo.capa_foco}%
+            </span>
+          </div>
+          <Slider
+            aria-labelledby="lp-capa-foco-rotulo"
+            min={0}
+            max={100}
+            step={5}
+            value={[e.conteudo.capa_foco]}
+            onValueChange={([v]) => mudar({ conteudo: { ...e.conteudo, capa_foco: v ?? 50 } })}
+          />
+          <p className="text-caption text-muted-foreground">
+            A capa corta a foto em cima e embaixo. Arraste para a direita para mostrar a parte de
+            baixo da foto (a pessoa sobe na tela) e para a esquerda para mostrar a parte de cima.
+            Confira na prévia.
+          </p>
+        </div>
+      )}
       <GrupoFotos
         titulo="Galeria de trabalhos"
         dica={`Mosaico, cartões de serviço e fundos das seções. Ideal: ${MEDIDAS[e.modelo].galeria}`}
