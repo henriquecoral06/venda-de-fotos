@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, X } from "lucide-react";
+import { mascararTelefone } from "@/lib/format";
 import type { DadosFormulario, DadosLanding } from "./tipos";
 
 type Campo = keyof DadosFormulario;
@@ -169,9 +170,14 @@ export function FormularioLanding({
                     type={c.tipo}
                     autoComplete={c.auto}
                     inputMode={c.tipo === "tel" ? "tel" : undefined}
-                    maxLength={c.chave === "email" ? 200 : 120}
+                    maxLength={c.chave === "email" ? 200 : c.chave === "telefone" ? undefined : 120}
+                    placeholder={c.chave === "telefone" ? "(11) 98765-4321" : undefined}
                     value={valores[c.chave] ?? ""}
-                    onChange={(e) => setValores((v) => ({ ...v, [c.chave]: e.target.value }))}
+                    onChange={(e) => {
+                      const valor =
+                        c.chave === "telefone" ? mascararTelefone(e.target.value) : e.target.value;
+                      setValores((v) => ({ ...v, [c.chave]: valor }));
+                    }}
                     aria-invalid={erros[c.chave] ? true : undefined}
                     aria-describedby={erros[c.chave] ? `lp-form-${c.chave}-erro` : undefined}
                     className={`${campoBase} ${erros[c.chave] ? "border-red-600" : ""}`}

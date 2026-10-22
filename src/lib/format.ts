@@ -62,3 +62,20 @@ export function normalizarTelefone(valor: string): string {
   if (digitos === "") return "";
   return digitos.length <= 11 ? `55${digitos}` : digitos;
 }
+
+/**
+ * Máscara de telefone brasileiro enquanto a pessoa digita: (11) 3456-7890 ou
+ * (11) 98765-4321. Os separadores só entram quando já há dígito depois deles,
+ * para o backspace não travar num parêntese ou hífen. Um +55 colado sai.
+ */
+export function mascararTelefone(valor: string): string {
+  let d = valor.replace(/\D/g, "");
+  if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+  d = d.slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : "";
+  const ddd = d.slice(0, 2);
+  const resto = d.slice(2);
+  const corte = d.length === 11 ? 5 : 4;
+  if (resto.length <= corte) return `(${ddd}) ${resto}`;
+  return `(${ddd}) ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}
