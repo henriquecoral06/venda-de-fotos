@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Check, Clock, Loader2, X } from "lucide-react";
+import { Check, Clock, Loader2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BarraSelecao } from "@/components/BarraSelecao";
 import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
@@ -17,6 +18,7 @@ import {
 import { DetalhePedido } from "@/features/pedidos/DetalhePedido";
 import { TabelaPedidos } from "@/features/pedidos/TabelaPedidos";
 import { BRAND } from "@/config/brand";
+import { combinaBusca } from "@/lib/busca";
 
 export const Route = createFileRoute("/_authenticated/pedidos")({
   head: () => ({ meta: [{ title: `Pedidos | ${BRAND.name}` }] }),
@@ -24,6 +26,8 @@ export const Route = createFileRoute("/_authenticated/pedidos")({
 });
 
 type Filtro = "todos" | StatusPedido;
+
+const POR_PAGINA = 25;
 
 /** "1 pedido" / "3 pedidos", e o "s" do particípio que vem depois. */
 function pedidos(qtd: number): { texto: string; s: string } {
@@ -66,15 +70,20 @@ const FILTROS = [
 function PaginaPedidos() {
   const lista = usePedidos();
   const [filtro, setFiltro] = useState<Filtro>("todos");
+  const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
   const [abertoId, setAbertoId] = useState<string | null>(null);
   const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
   const mudarStatus = useMudarStatusPedidos();
   const [cancelando, setCancelando] = useState<{ mensagem: (n: number) => string } | null>(null);
 
   const filtrados = useMemo(() => {
-    const todos = lista.data ?? [];
-    return filtro === "todos" ? todos : todos.filter((p) => p.status === filtro);
-  }, [lista.data, filtro]);
+    return (lista.data ?? []).filter(
+      (p) =>
+        (filtro === "todos" || p.status === filtro) &&
+        combinaBusca(busca, [p.cliente_nome, p.cliente_email, p.galeria?.titulo, p.codigo]),
+    );
+  }, [lista.data, filtro, busca]);
 
   // Só conta o que está na tela: trocar o filtro não age sobre linha escondida.
   const marcados = useMemo(
@@ -171,15 +180,34 @@ function PaginaPedidos() {
               ))}
             </BarraSelecao>
           ) : (
-            <ControleSegmentado
-              opcoes={FILTROS}
-              valor={filtro}
-              aoMudar={setFiltro}
-              rotuloAria="Filtrar pedidos"
-            />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <ControleSegmentado
+                opcoes={FILTROS}
+                valor={filtro}
+                aoMudar={(v) => {
+                  setFiltro(v);
+                  setPagina(1);
+                }}
+                rotuloAria="Filtrar pedidos"
+              />
+              <Input
+                type="search"
+                icone={<Search className="size-4" />}
+                placeholder="Buscar por cliente, e-mail ou galeria"
+                aria-label="Buscar pedidos"
+                className="md:w-80"
+                value={busca}
+                onChange={(e) => {
+                  setBusca(e.target.value);
+                  setPagina(1);
+                }}
+              />
+            </div>
           )}
           <TabelaPedidos
             pedidos={filtrados}
+            paginacao={{ pagina, porPagina: POR_PAGINA, aoMudar: setPagina }}
+            vazio={busca.trim() ? `Nenhum pedido encontrado para “${busca.trim()}”.` : undefined}
             aoAbrir={(p) => setAbertoId(p.id)}
             selecao={{
               selecionadas: selecionados,

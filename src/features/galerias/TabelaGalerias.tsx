@@ -2,7 +2,12 @@ import { Link } from "@tanstack/react-router";
 import { ImageIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Tabela, type ColunaTabela, type SelecaoTabela } from "@/components/Tabela";
+import {
+  Tabela,
+  type ColunaTabela,
+  type PaginacaoTabela,
+  type SelecaoTabela,
+} from "@/components/Tabela";
 import { brl, dataBR } from "@/lib/format";
 import { urlPrevia } from "@/lib/fotos";
 import { ROTULO_STATUS_GALERIA, type GaleriaComContagem, type StatusGaleria } from "./api";
@@ -23,9 +28,13 @@ const capaDa = (g: GaleriaComContagem) =>
 export function TabelaGalerias({
   galerias,
   selecao,
+  paginacao,
+  vazio = "Nenhuma galeria neste filtro.",
 }: {
   galerias: GaleriaComContagem[];
   selecao?: SelecaoTabela<GaleriaComContagem>;
+  paginacao?: PaginacaoTabela;
+  vazio?: string | undefined;
 }) {
   const colunas: ColunaTabela<GaleriaComContagem>[] = [
     {
@@ -114,8 +123,9 @@ export function TabelaGalerias({
         linhas={galerias}
         chaveLinha={(g) => g.id}
         ordenacaoInicial={{ chave: "data_evento", direcao: "desc" }}
-        vazio="Nenhuma galeria neste filtro."
+        vazio={vazio}
         {...(selecao ? { selecao } : {})}
+        {...(paginacao ? { paginacao } : {})}
       />
     </Card>
   );

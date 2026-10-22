@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import type { Enums, Tables } from "@/integrations/supabase/types";
+import { buscarTodas } from "@/lib/busca";
 import { BUCKET_ORIGINAIS, BUCKET_PREVIAS } from "@/lib/fotos";
 import { extensaoDaPrevia, extensaoDe, processarFoto } from "./imagens";
 
@@ -110,16 +111,22 @@ export function useGalerias() {
   return useQuery({
     queryKey: [...CHAVE_GALERIAS, "lista"],
     queryFn: async (): Promise<GaleriaComContagem[]> => {
-      const { data, error } = await supabase
-        .from("galerias")
-        .select(
-          "*, capa:fotos!galerias_capa_foto_id_fkey(caminho_miniatura), primeira:fotos!fotos_galeria_id_fkey(caminho_miniatura), fotos!fotos_galeria_id_fkey(count), pedidos(count)",
-        )
-        .order("created_at", { ascending: false })
-        .order("ordem", { referencedTable: "primeira" })
-        .limit(1, { referencedTable: "primeira" });
-      if (error) throw erroLegivel(error.message);
-      return data ?? [];
+      try {
+        return await buscarTodas((de, ate) =>
+          supabase
+            .from("galerias")
+            .select(
+              "*, capa:fotos!galerias_capa_foto_id_fkey(caminho_miniatura), primeira:fotos!fotos_galeria_id_fkey(caminho_miniatura), fotos!fotos_galeria_id_fkey(count), pedidos(count)",
+            )
+            .order("created_at", { ascending: false })
+            .order("id")
+            .order("ordem", { referencedTable: "primeira" })
+            .limit(1, { referencedTable: "primeira" })
+            .range(de, ate),
+        );
+      } catch (e: unknown) {
+        throw erroLegivel(e instanceof Error ? e.message : String(e));
+      }
     },
   });
 }

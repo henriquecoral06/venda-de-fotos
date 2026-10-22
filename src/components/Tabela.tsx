@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import {
   Table,
@@ -10,6 +10,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Paginacao } from "@/components/Paginacao";
 import { cn } from "@/lib/utils";
 
 export type Alinhamento = "esquerda" | "direita" | "centro";
@@ -30,6 +31,16 @@ export interface SelecaoTabela<L> {
   aoMudar: (selecionadas: Set<string>) => void;
   /** Nome da linha para leitor de tela ("Selecionar <rótulo>"). */
   rotulo: (linha: L) => string;
+}
+
+/**
+ * Paginação controlada: a ordem vale para todas as linhas e só a página atual
+ * é desenhada. Quem usa volta para a página 1 quando o filtro ou a busca mudam.
+ */
+export interface PaginacaoTabela {
+  pagina: number;
+  porPagina: number;
+  aoMudar: (pagina: number) => void;
 }
 
 export interface ColunaTabela<L> {
@@ -104,7 +115,7 @@ function IconeOrdenacao({ direcao }: { direcao: DirecaoOrdenacao | null }) {
  * Tabela dirigida por dados. Ordenação interna por clique no cabeçalho
  * (`ordenavel`) ou controlada (`ordenacao` + `aoOrdenar`); `rodape` vai em
  * `<tfoot>` e não se move quando a ordem muda. Com `selecao`, cada linha ganha
- * uma caixinha à esquerda.
+ * uma caixinha à esquerda. Com `paginacao`, a navegação por páginas vem embaixo.
  */
 export function Tabela<L>({
   colunas,
@@ -117,6 +128,7 @@ export function Tabela<L>({
   vazio: mensagemVazia = "Nada por aqui ainda.",
   className,
   selecao,
+  paginacao,
 }: {
   colunas: ColunaTabela<L>[];
   linhas: L[];
@@ -128,8 +140,10 @@ export function Tabela<L>({
   vazio?: ReactNode;
   className?: string;
   selecao?: SelecaoTabela<L>;
+  paginacao?: PaginacaoTabela;
 }) {
   const [interna, setInterna] = useState<Ordenacao | null>(ordenacaoInicial);
+  const caixa = useRef<HTMLDivElement>(null);
   const controlada = ordenacao !== undefined;
   const atual = controlada ? ordenacao : interna;
 
@@ -158,7 +172,16 @@ export function Tabela<L>({
     });
   }, [linhas, colunas, atual]);
 
-  const chaves = ordenadas.map((l, i) => chaveLinha(l, i));
+  // Página fora do fim (a lista encolheu) mostra a última.
+  const totalPaginas = paginacao
+    ? Math.max(1, Math.ceil(ordenadas.length / paginacao.porPagina))
+    : 1;
+  const pagina = paginacao ? Math.min(Math.max(1, paginacao.pagina), totalPaginas) : 1;
+  const exibidas = paginacao
+    ? ordenadas.slice((pagina - 1) * paginacao.porPagina, pagina * paginacao.porPagina)
+    : ordenadas;
+
+  const chaves = exibidas.map((l, i) => chaveLinha(l, i));
   const marcadasVisiveis = selecao ? chaves.filter((k) => selecao.selecionadas.has(k)).length : 0;
   const todasMarcadas = chaves.length > 0 && marcadasVisiveis === chaves.length;
 
@@ -182,7 +205,7 @@ export function Tabela<L>({
 
   const colunasTotais = colunas.length + (selecao ? 1 : 0);
 
-  return (
+  const tabela = (
     <Table className={className}>
       <TableHeader>
         <TableRow className="border-hairline-soft hover:bg-transparent">
@@ -242,14 +265,14 @@ export function Tabela<L>({
       </TableHeader>
 
       <TableBody>
-        {ordenadas.length === 0 && (
+        {exibidas.length === 0 && (
           <TableRow className="hover:bg-transparent">
             <TableCell colSpan={colunasTotais} className="px-5 py-10 text-center text-mute">
               {mensagemVazia}
             </TableCell>
           </TableRow>
         )}
-        {ordenadas.map((linha, i) => {
+        {exibidas.map((linha, i) => {
           const chave = chaves[i] ?? chaveLinha(linha, i);
           const marcada = selecao?.selecionadas.has(chave) ?? false;
           return (
@@ -306,5 +329,27 @@ export function Tabela<L>({
         </TableFooter>
       )}
     </Table>
+  );
+
+  if (!paginacao) return tabela;
+
+  // A navegação fica embaixo: a página nova começa do topo da lista.
+  function irPara(p: number) {
+    paginacao?.aoMudar(p);
+    const topo = caixa.current?.getBoundingClientRect().top ?? 0;
+    if (topo < 0) caixa.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+  }
+
+  return (
+    <div ref={caixa} className="scroll-mt-20">
+      {tabela}
+      <Paginacao
+        pagina={pagina}
+        porPagina={paginacao.porPagina}
+        total={ordenadas.length}
+        aoMudar={irPara}
+        className="border-t border-hairline-soft px-5 py-3"
+      />
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Enums, Tables } from "@/integrations/supabase/types";
+import { buscarTodas } from "@/lib/busca";
 
 export type Pedido = Tables<"pedidos">;
 export type StatusPedido = Enums<"status_pedido">;
@@ -30,14 +31,15 @@ export const VARIANTE_STATUS_PEDIDO = {
 export function usePedidos() {
   return useQuery({
     queryKey: [...CHAVE_PEDIDOS, "lista"],
-    queryFn: async (): Promise<PedidoComGaleria[]> => {
-      const { data, error } = await supabase
-        .from("pedidos")
-        .select("*, galeria:galerias(titulo, slug), itens:pedido_itens(count)")
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
-    },
+    queryFn: (): Promise<PedidoComGaleria[]> =>
+      buscarTodas((de, ate) =>
+        supabase
+          .from("pedidos")
+          .select("*, galeria:galerias(titulo, slug), itens:pedido_itens(count)")
+          .order("created_at", { ascending: false })
+          .order("id")
+          .range(de, ate),
+      ),
   });
 }
 

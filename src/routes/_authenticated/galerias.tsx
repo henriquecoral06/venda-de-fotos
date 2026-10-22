@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Archive, Eye, EyeOff, ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
+import { Archive, Eye, EyeOff, ExternalLink, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -12,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { BarraSelecao } from "@/components/BarraSelecao";
 import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
@@ -28,6 +29,7 @@ import {
 import { FormularioGaleria } from "@/features/galerias/FormularioGaleria";
 import { TabelaGalerias } from "@/features/galerias/TabelaGalerias";
 import { BRAND } from "@/config/brand";
+import { combinaBusca } from "@/lib/busca";
 
 export const Route = createFileRoute("/_authenticated/galerias")({
   head: () => ({ meta: [{ title: `Galerias | ${BRAND.name}` }] }),
@@ -35,6 +37,8 @@ export const Route = createFileRoute("/_authenticated/galerias")({
 });
 
 type Filtro = "ativas" | StatusGaleria;
+
+const POR_PAGINA = 25;
 
 /** "1 galeria" / "3 galerias", e o "s" do particípio que vem depois. */
 function galerias(qtd: number): { texto: string; s: string } {
@@ -78,6 +82,8 @@ function PaginaGalerias() {
   const lista = useGalerias();
   const [criando, setCriando] = useState<number | null>(null);
   const [filtro, setFiltro] = useState<Filtro>("ativas");
+  const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const mudarStatus = useMudarStatusGalerias();
@@ -90,10 +96,12 @@ function PaginaGalerias() {
   };
 
   const filtradas = useMemo(() => {
-    const todas = lista.data ?? [];
-    if (filtro === "ativas") return todas.filter((g) => g.status !== "arquivada");
-    return todas.filter((g) => g.status === filtro);
-  }, [lista.data, filtro]);
+    return (lista.data ?? []).filter(
+      (g) =>
+        (filtro === "ativas" ? g.status !== "arquivada" : g.status === filtro) &&
+        combinaBusca(busca, [g.titulo, g.cliente_nome, g.categoria, g.local, g.slug]),
+    );
+  }, [lista.data, filtro, busca]);
 
   // Só conta o que está na tela: trocar o filtro não age sobre linha escondida.
   const ids = useMemo(
@@ -211,15 +219,34 @@ function PaginaGalerias() {
               </Button>
             </BarraSelecao>
           ) : (
-            <ControleSegmentado
-              opcoes={FILTROS}
-              valor={filtro}
-              aoMudar={setFiltro}
-              rotuloAria="Filtrar galerias"
-            />
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <ControleSegmentado
+                opcoes={FILTROS}
+                valor={filtro}
+                aoMudar={(v) => {
+                  setFiltro(v);
+                  setPagina(1);
+                }}
+                rotuloAria="Filtrar galerias"
+              />
+              <Input
+                type="search"
+                icone={<Search className="size-4" />}
+                placeholder="Buscar por nome, cliente ou local"
+                aria-label="Buscar galerias"
+                className="md:w-80"
+                value={busca}
+                onChange={(e) => {
+                  setBusca(e.target.value);
+                  setPagina(1);
+                }}
+              />
+            </div>
           )}
           <TabelaGalerias
             galerias={filtradas}
+            paginacao={{ pagina, porPagina: POR_PAGINA, aoMudar: setPagina }}
+            vazio={busca.trim() ? `Nenhuma galeria encontrada para “${busca.trim()}”.` : undefined}
             selecao={{ selecionadas, aoMudar: setSelecionadas, rotulo: (g) => g.titulo }}
           />
         </div>
