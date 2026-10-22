@@ -6,7 +6,6 @@ import {
   Copy,
   CreditCard,
   Download,
-  ExternalLink,
   Loader2,
   MessageCircle,
   QrCode,
@@ -241,7 +240,9 @@ function PagamentoOnline({ pedido }: { pedido: PedidoPublico }) {
       {
         onSuccess: (c) => {
           setEscolhendo(false);
-          if (c.metodo === "cartao") window.open(c.link, "_blank", "noopener");
+          // Na mesma aba: aba nova aberta depois da resposta do servidor cai no
+          // bloqueador de pop-up. O gateway devolve o comprador para cá.
+          if (c.metodo === "cartao") window.location.assign(c.link);
         },
         onError: (erro: Error) => toast.error(erro.message),
       },
@@ -308,14 +309,16 @@ function PagamentoOnline({ pedido }: { pedido: PedidoPublico }) {
       {mostrarCobranca && cobranca.metodo === "cartao" && (
         <div className="space-y-3 rounded-lg bg-muted p-4">
           <p className="text-sm text-foreground">
-            O pagamento com cartão abre numa página segura do{" "}
-            {pedido.pagamento.gateway === "asaas" ? "Asaas" : "Mercado Pago"}. Depois de pagar,
-            volte para esta página.
+            O pagamento com cartão é feito numa página segura do{" "}
+            {pedido.pagamento.gateway === "asaas" ? "Asaas" : "Mercado Pago"}.{" "}
+            {pedido.pagamento.gateway === "asaas"
+              ? "Depois de pagar, volte para este link do pedido."
+              : "Depois de pagar, você volta para esta página."}
           </p>
           <Button asChild className={cn("w-full sm:w-auto", CLASSE_BOTAO_MARCA)}>
-            <a href={cobranca.link} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="size-4" />
-              Abrir pagamento com cartão
+            <a href={cobranca.link} rel="noreferrer">
+              <CreditCard className="size-4" />
+              Pagar com cartão
             </a>
           </Button>
         </div>
