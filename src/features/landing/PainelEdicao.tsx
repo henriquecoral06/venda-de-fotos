@@ -380,6 +380,51 @@ const MEDIDAS: Record<EdicaoLanding["modelo"], { capa: string; galeria: string; 
   },
 };
 
+/**
+ * Proporção da capa como ela aparece: computador de 1920 × 900 (88% ou 85% da
+ * altura) e celular de 390 × 844. No Editorial cada foto ocupa metade da tela.
+ */
+const CORTE_CAPA = {
+  editorial: { computador: "960 / 790", celular: "390 / 743" },
+  classico: { computador: "1920 / 765", celular: "390 / 717" },
+} as const;
+
+/** Miniaturas do corte real da primeira foto da capa, que acompanham o controle. */
+function CorteDaCapa({
+  modelo,
+  caminho,
+  foco,
+}: {
+  modelo: "editorial" | "classico";
+  caminho: string;
+  foco: number;
+}) {
+  const estilo = { objectPosition: `50% ${foco}%` };
+  const corte = CORTE_CAPA[modelo];
+  return (
+    <div className="flex items-end gap-3">
+      <figure className="w-40 space-y-1">
+        <img
+          src={urlLogo(caminho)}
+          alt=""
+          style={{ ...estilo, aspectRatio: corte.computador }}
+          className="w-full rounded-md border border-border object-cover"
+        />
+        <figcaption className="text-caption text-muted-foreground">No computador</figcaption>
+      </figure>
+      <figure className="w-16 space-y-1">
+        <img
+          src={urlLogo(caminho)}
+          alt=""
+          style={{ ...estilo, aspectRatio: corte.celular }}
+          className="w-full rounded-md border border-border object-cover"
+        />
+        <figcaption className="text-caption text-muted-foreground">Celular</figcaption>
+      </figure>
+    </div>
+  );
+}
+
 export function AbaFotos({
   e,
   mudar,
@@ -427,8 +472,12 @@ export function AbaFotos({
           <p className="text-caption text-muted-foreground">
             A capa corta a foto em cima e embaixo. Arraste para a direita para mostrar a parte de
             baixo da foto (a pessoa sobe na tela) e para a esquerda para mostrar a parte de cima.
-            Confira na prévia.
+            Com foto vertical, o efeito aparece de verdade perto das pontas (0% a 20% ou 80% a
+            100%).
           </p>
+          {img.capa[0] && (
+            <CorteDaCapa modelo={e.modelo} caminho={img.capa[0]} foco={e.conteudo.capa_foco} />
+          )}
         </div>
       )}
       <GrupoFotos
