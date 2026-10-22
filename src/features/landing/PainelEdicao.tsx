@@ -357,7 +357,7 @@ function GrupoFotos({
  */
 const MEDIDAS: Record<EdicaoLanding["modelo"], { capa: string; galeria: string; sobre: string }> = {
   editorial: {
-    capa: "2 fotos verticais, 1200 × 1600 px (3:4). Ficam lado a lado; no celular as laterais são cortadas, então deixe a pessoa no centro.",
+    capa: "2 fotos verticais, 1200 × 1600 px (3:4), lado a lado em tela cheia; no celular aparece só a primeira. A página mostra o centro de cada foto: deixe a pessoa no meio.",
     galeria: "Horizontais, 1600 × 1200 px (4:3).",
     sobre: "Vertical, 1200 × 1500 px (4:5).",
   },

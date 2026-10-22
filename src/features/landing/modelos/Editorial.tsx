@@ -65,12 +65,15 @@ export function ModeloEditorial({ d }: { d: DadosLanding }) {
         />
       </header>
 
-      {/* Capa: duas fotos do mesmo tamanho, encostadas no centro da tela, com o
-          título por cima em branco. */}
-      <section className="relative flex h-[88vh] min-h-[480px] justify-center overflow-hidden bg-black">
-        <div className="grid h-full w-full max-w-6xl grid-cols-2">
-          <Foto src={fotoDa(fotos.capa, 0)} className="size-full opacity-85" />
-          <Foto src={fotoDa(fotos.capa, 1)} className="size-full opacity-85" />
+      {/* Capa: duas fotos em tela cheia, metade cada uma, mostrando o centro de
+          cada imagem; no celular, só a primeira. Título por cima em branco. */}
+      <section className="relative h-[88vh] min-h-[480px] overflow-hidden bg-black">
+        <div className="grid size-full grid-cols-1 md:grid-cols-2">
+          <Foto src={fotoDa(fotos.capa, 0)} className="size-full object-center opacity-85" />
+          <Foto
+            src={fotoDa(fotos.capa, 1)}
+            className="hidden size-full object-center opacity-85 md:block"
+          />
         </div>
         <div className="absolute inset-0 bg-black/25" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center text-white">
