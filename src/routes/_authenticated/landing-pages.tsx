@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ExternalLink, Loader2, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -14,7 +14,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { BarraSelecao } from "@/components/BarraSelecao";
+import { ControleSegmentado } from "@/components/ControleSegmentado";
 import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonTabela } from "@/components/Skeletons";
 import { Tabela, type ColunaTabela } from "@/components/Tabela";
@@ -24,6 +26,7 @@ import { useVitrine } from "@/features/vitrine/api";
 import { useExcluirLandings, useLandings, type LandingPage } from "@/features/landing/api";
 import { NovaLanding } from "@/features/landing/NovaLanding";
 import { INFO_MODELO, ehModelo } from "@/features/landing/tipos";
+import { combinaBusca } from "@/lib/busca";
 import { dataHoraBR } from "@/lib/format";
 import { BRAND } from "@/config/brand";
 
@@ -31,6 +34,18 @@ export const Route = createFileRoute("/_authenticated/landing-pages")({
   head: () => ({ meta: [{ title: `Landing pages | ${BRAND.name}` }] }),
   component: PaginaLandingPages,
 });
+
+const POR_PAGINA = 25;
+
+const FILTROS = [
+  { valor: "todas", rotulo: "Todas" },
+  { valor: "publicadas", rotulo: "Publicadas" },
+  { valor: "rascunhos", rotulo: "Rascunhos" },
+] as const;
+
+type Filtro = (typeof FILTROS)[number]["valor"];
+
+const nomeModelo = (l: LandingPage) => (ehModelo(l.modelo) ? INFO_MODELO[l.modelo].nome : l.modelo);
 
 function PaginaLandingPages() {
   const navigate = useNavigate();
@@ -42,9 +57,24 @@ function PaginaLandingPages() {
   const [criando, setCriando] = useState<number | null>(null);
   const [selecionadas, setSelecionadas] = useState<Set<string>>(new Set());
   const [confirmando, setConfirmando] = useState(false);
+  const [filtro, setFiltro] = useState<Filtro>("todas");
+  const [busca, setBusca] = useState("");
+  const [pagina, setPagina] = useState(1);
 
   const nomeLoja = loja.data?.nome_exibicao || ctx?.organizacao?.nome || BRAND.name;
-  const ids = (lista.data ?? []).filter((l) => selecionadas.has(l.id)).map((l) => l.id);
+
+  const filtradas = useMemo(
+    () =>
+      (lista.data ?? []).filter(
+        (l) =>
+          (filtro === "todas" || l.publicada === (filtro === "publicadas")) &&
+          combinaBusca(busca, [l.titulo, l.slug, nomeModelo(l)]),
+      ),
+    [lista.data, filtro, busca],
+  );
+
+  // Só conta o que está no filtro: trocar o filtro não age sobre linha escondida.
+  const ids = filtradas.filter((l) => selecionadas.has(l.id)).map((l) => l.id);
 
   const colunas: ColunaTabela<LandingPage>[] = [
     {
@@ -62,11 +92,7 @@ function PaginaLandingPages() {
       chave: "modelo",
       titulo: "Modelo",
       classe: "hidden sm:table-cell",
-      renderizar: (l) => (
-        <Badge variant="outline">
-          {ehModelo(l.modelo) ? INFO_MODELO[l.modelo].nome : l.modelo}
-        </Badge>
-      ),
+      renderizar: (l) => <Badge variant="outline">{nomeModelo(l)}</Badge>,
     },
     {
       chave: "publicada",
@@ -165,7 +191,7 @@ function PaginaLandingPages() {
         />
       ) : (
         <div className="space-y-4">
-          {ids.length > 0 && (
+          {ids.length > 0 ? (
             <BarraSelecao
               quantidade={ids.length}
               singular="landing page selecionada"
@@ -182,13 +208,43 @@ function PaginaLandingPages() {
                 Excluir
               </Button>
             </BarraSelecao>
+          ) : (
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <ControleSegmentado
+                opcoes={FILTROS}
+                valor={filtro}
+                aoMudar={(v) => {
+                  setFiltro(v);
+                  setPagina(1);
+                }}
+                rotuloAria="Filtrar landing pages"
+              />
+              <Input
+                type="search"
+                icone={<Search className="size-4" />}
+                placeholder="Buscar por nome, link ou modelo"
+                aria-label="Buscar landing pages"
+                className="md:w-80"
+                value={busca}
+                onChange={(e) => {
+                  setBusca(e.target.value);
+                  setPagina(1);
+                }}
+              />
+            </div>
           )}
           <Card className="overflow-hidden p-0">
             <Tabela
               colunas={colunas}
-              linhas={lista.data}
+              linhas={filtradas}
               chaveLinha={(l) => l.id}
               ordenacaoInicial={{ chave: "updated_at", direcao: "desc" }}
+              paginacao={{ pagina, porPagina: POR_PAGINA, aoMudar: setPagina }}
+              vazio={
+                busca.trim()
+                  ? `Nenhuma landing page encontrada para “${busca.trim()}”.`
+                  : "Nenhuma landing page neste filtro."
+              }
               selecao={{ selecionadas, aoMudar: setSelecionadas, rotulo: (l) => l.titulo }}
             />
           </Card>
