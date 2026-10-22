@@ -69,7 +69,9 @@ export function ModeloEditorial({ d }: { d: DadosLanding }) {
       {/* Capa: duas fotos em tela cheia, metade cada uma, mostrando o centro de
           cada imagem; no celular, só a primeira. Título por cima em branco. */}
       <section className="relative h-[88vh] min-h-[480px] overflow-hidden bg-black">
-        <div className="grid size-full grid-cols-1 md:grid-cols-2">
+        {/* `grid-rows-1` prende a linha na altura da capa: sem ela, a foto vertical
+            cresce até o tamanho natural, a capa corta embaixo e o enquadramento não age. */}
+        <div className="grid size-full grid-cols-1 grid-rows-1 md:grid-cols-2">
           <Foto
             src={fotoDa(fotos.capa, 0)}
             style={enquadramentoCapa(c.capa_foco)}
