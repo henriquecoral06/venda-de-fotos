@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
+import { buscarTodas } from "@/lib/busca";
 import type { Json, Tables } from "@/integrations/supabase/types";
 import { BUCKET_MARCA, urlLogo, type Marca } from "@/lib/marca";
 import { urlPrevia } from "@/lib/fotos";
@@ -74,12 +75,18 @@ export function useLandings() {
   return useQuery({
     queryKey: [...CHAVE_LANDING, "lista"],
     queryFn: async (): Promise<LandingPage[]> => {
-      const { data, error } = await supabase
-        .from("landing_pages")
-        .select("*")
-        .order("updated_at", { ascending: false });
-      if (error) throw erroLegivel(error.message);
-      return data ?? [];
+      try {
+        return await buscarTodas((de, ate) =>
+          supabase
+            .from("landing_pages")
+            .select("*")
+            .order("updated_at", { ascending: false })
+            .order("id")
+            .range(de, ate),
+        );
+      } catch (e: unknown) {
+        throw erroLegivel(e instanceof Error ? e.message : String(e));
+      }
     },
   });
 }
