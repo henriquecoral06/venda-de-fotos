@@ -54,6 +54,11 @@ export const esquemaConteudo = z.object({
   instagram: texto(60),
   eventos_titulo: texto(120),
   eventos_texto: texto(300),
+  /**
+   * Parte da foto de capa que aparece quando ela é cortada (0 = topo, 100 =
+   * base). Vale para as capas em tela cheia (Editorial e Clássico).
+   */
+  capa_foco: z.number().int().min(0).max(100),
   imagens: z.object({
     capa: z.array(z.string().max(300)).max(5),
     galeria: z.array(z.string().max(300)).max(8),
@@ -141,6 +146,7 @@ export function conteudoInicial(modelo: ModeloLanding, nome: string): ConteudoLa
     instagram: "",
     eventos_titulo: "Eventos recentes",
     eventos_texto: "Esteve em algum destes? Encontre as suas fotos e compre direto pelo site.",
+    capa_foco: 50,
     imagens: { capa: [], galeria: [], sobre: "" },
   };
   if (modelo === "estudio") {

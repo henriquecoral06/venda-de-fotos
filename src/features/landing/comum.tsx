@@ -63,10 +63,12 @@ export function Foto({
   src,
   className,
   alt = "",
+  style,
 }: {
   src: string | null | undefined;
   className?: string;
   alt?: string;
+  style?: CSSProperties;
 }) {
   if (!src) {
     return (
@@ -76,7 +78,20 @@ export function Foto({
       />
     );
   }
-  return <img src={src} alt={alt} loading="lazy" className={`object-cover ${className ?? ""}`} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      style={style}
+      className={`object-cover ${className ?? ""}`}
+    />
+  );
+}
+
+/** `object-position` da capa: centro na horizontal, `capa_foco` na vertical. */
+export function enquadramentoCapa(foco: number): CSSProperties {
+  return { objectPosition: `50% ${foco}%` };
 }
 
 /** Foto número `i` da lista, repetindo do começo quando faltam. */

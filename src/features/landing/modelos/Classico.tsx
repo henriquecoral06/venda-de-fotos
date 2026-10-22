@@ -11,6 +11,7 @@ import {
   capaEvento,
   detalheEvento,
   ehFundoEscuro,
+  enquadramentoCapa,
   fotoDa,
   logoPara,
   variaveisCores,
@@ -67,7 +68,11 @@ export function ModeloClassico({ d }: { d: DadosLanding }) {
 
       {/* Capa em tela cheia com o título por cima. */}
       <section className="relative h-[85vh] min-h-[460px] overflow-hidden bg-black">
-        <Foto src={fotoDa(fotos.capa, 0)} className="absolute inset-0 size-full opacity-90" />
+        <Foto
+          src={fotoDa(fotos.capa, 0)}
+          style={enquadramentoCapa(c.capa_foco)}
+          className="absolute inset-0 size-full opacity-90"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/25 to-black/10" />
         <div className="absolute inset-0 flex flex-col items-center justify-center px-5 text-center text-white">
           <h1
