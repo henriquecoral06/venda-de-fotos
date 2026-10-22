@@ -723,7 +723,7 @@ begin
   perform set_config('role', 'none', true);
   perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
-  select dados into j from public.landing_contatos where landing_id = lp order by created_at limit 1;
+  select dados into j from public.landing_contatos where landing_id = lp and dados ? 'email';
   if j ->> 'nome' is distinct from 'Ana' or j ? 'invasor' then
     raise exception 'RLS FALHOU: contato gravado errado: %', j;
   end if;
