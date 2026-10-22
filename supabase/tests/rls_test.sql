@@ -37,6 +37,8 @@ declare
   gal_evento uuid;
   lp uuid;
   chave_org text;
+  ped_online uuid;
+  segredo_webhook text;
   foto_evento uuid;
   papel_atual public.papel_organizacao;
   aberto boolean;
@@ -721,7 +723,7 @@ begin
   perform set_config('role', 'none', true);
   perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
-  select dados into j from public.landing_contatos where landing_id = lp order by created_at limit 1;
+  select dados into j from public.landing_contatos where landing_id = lp and dados ? 'email';
   if j ->> 'nome' is distinct from 'Ana' or j ? 'invasor' then
     raise exception 'RLS FALHOU: contato gravado errado: %', j;
   end if;
@@ -732,6 +734,116 @@ begin
   exception when insufficient_privilege then null;
   end;
   perform set_config('role', 'none', true);
+
+  -- 33. pagamento online: chaves nunca lidas; só o dono configura; o pedido só
+  -- vira pago depois de o banco consultar o gateway (respostas simuladas aqui)
+  perform set_config('role', 'none', true);
+  create or replace function public.asaas_chamar(_metodo text, _caminho text, _corpo jsonb default null)
+  returns jsonb language plpgsql as $f$
+  begin
+    if _caminho like '/webhooks%' then return '{"data": []}'; end if;
+    if _caminho like '/customers?%' then return '{"data": []}'; end if;
+    if _caminho = '/customers' then return '{"id": "cus_rls"}'; end if;
+    if _caminho = '/payments' then return '{"id": "pay_rls", "invoiceUrl": "https://asaas.test/i/1"}'; end if;
+    if _caminho like '%/pixQrCode' then return '{"encodedImage": "IMG", "payload": "000201RLS"}'; end if;
+    if _caminho = '/payments/pay_rls' then
+      return jsonb_build_object('id', 'pay_rls', 'externalReference', current_setting('rls.ref', true),
+        'value', current_setting('rls.valor', true)::numeric, 'status', current_setting('rls.status', true));
+    end if;
+    return '{}';
+  end $f$;
+  insert into public.pedidos (galeria_id, user_id, organizacao_id, cliente_nome, cliente_email, valor_total)
+  values (gal_org, u_dono, org_id, 'Bia', 'bia@exemplo.test', 30)
+  returning id, codigo into ped_online, txt;
+  select webhook_segredo into segredo_webhook from public.loja_segredos where id = 1;
+
+  perform set_config('request.jwt.claims', json_build_object('sub', u_membro, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform public.configurar_pagamento('asaas', '$aact_hmlg_rls', 'https://fotos.exemplo.test');
+    raise exception 'RLS FALHOU: membro configurou o pagamento';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', json_build_object('sub', u_dono, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  begin
+    perform 1 from public.loja_segredos;
+    raise exception 'RLS FALHOU: dono leu loja_segredos direto';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.configuracoes_loja set gateway = 'asaas' where id = 1;
+    raise exception 'RLS FALHOU: gateway trocado sem passar pela função';
+  exception when insufficient_privilege then null;
+  end;
+  j := public.configurar_pagamento('asaas', '$aact_hmlg_rls', 'https://fotos.exemplo.test/');
+  if j ->> 'gateway' <> 'asaas' or not (j ->> 'asaas_configurado')::boolean
+     or j ->> 'url_publica' <> 'https://fotos.exemplo.test' or j::text like '%aact%' then
+    raise exception 'RLS FALHOU: configuração do Asaas errada ou com a chave: %', j;
+  end if;
+  perform public.configurar_email('re_rls', 'fotos@exemplo.test', null);
+
+  perform set_config('role', 'none', true);
+  perform set_config('request.jwt.claims', '{"role":"anon"}', true);
+  perform set_config('role', 'anon', true);
+  begin
+    perform public.gerar_cobranca(txt, 'pix', '123');
+    raise exception 'RLS FALHOU: cobrança do Asaas aceita sem CPF válido';
+  exception when others then
+    if sqlerrm like 'RLS FALHOU%' then raise; end if;
+  end;
+  j := public.gerar_cobranca(txt, 'pix', '529.982.247-25');
+  if j -> 'cobranca' ->> 'pix_copia_cola' is distinct from '000201RLS' then
+    raise exception 'RLS FALHOU: Pix não gerado: %', j;
+  end if;
+  j := public.gerar_cobranca(txt, 'pix', '529.982.247-25');
+  j := public.pedido_publico(txt);
+  if j -> 'pagamento' ->> 'gateway' <> 'asaas' or j -> 'pagamento' -> 'cobranca' ->> 'metodo' <> 'pix'
+     or j::text like '%re_rls%' then
+    raise exception 'RLS FALHOU: pedido público sem a cobrança ou com segredo: %', j -> 'pagamento';
+  end if;
+  begin
+    perform 1 from public.cobrancas;
+    raise exception 'RLS FALHOU: visitante leu cobrancas';
+  exception when insufficient_privilege then null;
+  end;
+
+  perform set_config('rls.ref', txt, true);
+  perform set_config('rls.valor', '30', true);
+  perform set_config('rls.status', 'RECEIVED', true);
+  if public.receber_webhook_pagamento('asaas', 'chute',
+       '{"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_rls"}}') <> 'recusado' then
+    raise exception 'RLS FALHOU: webhook aceito sem o segredo';
+  end if;
+  perform set_config('rls.valor', '1', true);
+  txt := public.receber_webhook_pagamento('asaas', segredo_webhook,
+           '{"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_rls"}}');
+  if txt <> 'valor menor que o do pedido' then
+    raise exception 'RLS FALHOU: pagamento menor aceito (%)', txt;
+  end if;
+  perform set_config('rls.valor', '30', true);
+  perform set_config('rls.status', 'PENDING', true);
+  txt := public.receber_webhook_pagamento('asaas', segredo_webhook,
+           '{"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_rls"}}');
+  if txt not like 'não pago%' then
+    raise exception 'RLS FALHOU: aviso do webhook tomado como prova (%)', txt;
+  end if;
+  perform set_config('rls.status', 'RECEIVED', true);
+  txt := public.receber_webhook_pagamento('asaas', segredo_webhook,
+           '{"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_rls"}}');
+  if txt <> 'pago' then raise exception 'RLS FALHOU: pagamento confirmado não marcou o pedido (%)', txt; end if;
+
+  perform set_config('role', 'none', true);
+  select count(*) into n from public.pedidos
+   where id = ped_online and status = 'pago' and pago_via = 'asaas' and email_enviado_em is not null;
+  if n <> 1 then raise exception 'RLS FALHOU: pedido pago pelo Asaas sem status, origem ou e-mail'; end if;
+  select count(*) into n from public.cobrancas where pedido_id = ped_online;
+  if n <> 1 then raise exception 'RLS FALHOU: % cobranças para o mesmo Pix, esperado 1', n; end if;
+  select count(*) into n from public.pagamentos_eventos where externo_id = 'pay_rls';
+  if n <> 3 then raise exception 'RLS FALHOU: % avisos no log, esperado 3', n; end if;
 
   -- ── reparo na instalação vazia ──────────────────────────────────────────
   -- 20. sem organização nenhuma, garantir_organizacao cria e faz dono

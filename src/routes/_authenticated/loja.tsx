@@ -12,6 +12,7 @@ import { EstadoVazio, PageHeader } from "@/components/PageHeader";
 import { SkeletonFormulario } from "@/components/Skeletons";
 import { usePerfil } from "@/features/perfil/api";
 import { CartaoMarca } from "@/features/loja/CartaoMarca";
+import { PagamentoOnline } from "@/features/loja/PagamentoOnline";
 import {
   textoMarcaDagua,
   useConfiguracoesLoja,
@@ -57,6 +58,7 @@ function PaginaLoja() {
           organizacaoId={ctx?.organizacao?.id ?? null}
         />
       )}
+      {ctx?.ehDono && config.data && <PagamentoOnline />}
     </div>
   );
 }
@@ -162,7 +164,8 @@ function FormularioLoja({
           <h2 className="text-heading-sm">Pagamento</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             O cliente vê estes dados ao fechar o pedido. Depois de receber, confirme o pagamento em
-            Pedidos para liberar o download.
+            Pedidos para liberar o download. Com o pagamento online ligado (mais abaixo), a página
+            do pedido mostra o Pix e o cartão do gateway no lugar da chave.
           </p>
         </div>
         {!dados.chave_pix.trim() && (

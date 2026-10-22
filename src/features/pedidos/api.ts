@@ -132,3 +132,20 @@ export function useMudarStatusPedido() {
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_PEDIDOS }),
   });
 }
+
+export const ROTULO_PAGO_VIA: Record<string, string> = {
+  asaas: "Asaas",
+  mercadopago: "Mercado Pago",
+};
+
+/** Manda de novo ao comprador o e-mail com o link das fotos. */
+export function useReenviarEmailPedido() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.rpc("reenviar_email_pedido", { _pedido: id });
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_PEDIDOS }),
+  });
+}

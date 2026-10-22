@@ -27,6 +27,8 @@ toda mudança neste repositório.
   confirmar pagamento e cancelar.
 - `/loja`: logo (PNG, JPG, WebP ou SVG; o SVG vira PNG no navegador) e cores da marca (sugeridas a
   partir da logo), nome exibido ao cliente, marca d'água (liga e desliga, com o texto), chave Pix, WhatsApp para comprovantes e instruções de pagamento (só o dono edita).
+  Pagamento online (Asaas ou Mercado Pago) e e-mail automático das fotos pelo Resend: ver
+  "Pagamento online e e-mail".
   A logo e as cores aparecem na galeria e no pedido do cliente.
 - `/landing-pages`: páginas para anúncios em quatro modelos (Editorial, Portfólio, Estúdio e
   Clássico), com textos, fotos e cores editáveis e prévia ao vivo. Cada uma instala Meta Pixel,
@@ -45,7 +47,8 @@ toda mudança neste repositório.
   fotógrafo: baixar uma foto ou todas em ZIP. Em evento
   aberto: pedido de remoção da foto pelo WhatsApp (LGPD).
 - `/l/<link>`: landing page publicada, com os pixels e as tags do fotógrafo.
-- `/pedido/<código>`: situação do pedido, Pix para copiar, botão de WhatsApp com o comprovante e,
+- `/pedido/<código>`: situação do pedido, Pix para copiar (ou Pix com QR Code e cartão pelo gateway,
+  quando o pagamento online está ligado), botão de WhatsApp com o comprovante e,
   depois do pagamento, os downloads dos originais (um a um ou todos em ZIP, montado no navegador e
   dividido em partes quando passa do que o aparelho aguenta).
 
@@ -131,6 +134,25 @@ Para ligar o repositório a um Worker (Workers & Pages → Create → Import a r
   Meta pelo `pg_net`. Pixel e API usam o mesmo `event_id`, então a Meta não conta em dobro. Use o
   "código de teste" do Gerenciador de Eventos para conferir antes de rodar anúncios.
 
+## Pagamento online e e-mail
+
+- Em Loja e pagamento o dono escolhe: Pix manual, Asaas ou Mercado Pago. As chaves (do gateway e do
+  Resend) ficam em `loja_segredos`, que nenhum cliente lê; as funções do banco nunca as devolvem.
+- O banco fala com o gateway pela extensão `http` (o comprador precisa do QR Code na hora). Asaas
+  pede o CPF de quem paga; o cartão abre a página do gateway e nunca passa por aqui.
+- O pedido só vira pago quando o banco consulta o pagamento com a chave do fotógrafo e confere
+  status, referência (código do pedido) e valor. O aviso do gateway chega em
+  `/api/pagamentos/<gateway>` (segredo no cabeçalho `asaas-access-token` ou em `?secret=`) e só
+  dispara essa consulta; a página do pedido também consulta a cada 20 s enquanto está aberta.
+- Asaas: ao salvar a chave, o webhook é criado ou regravado na conta; a tela lê o webhook real e
+  oferece regravar quando ele some ou pausa. Mercado Pago: o endereço de aviso vai em cada cobrança
+  e precisa ser https.
+- Pedido pago (pelo gateway, à mão ou grátis) manda o link das fotos ao comprador pelo Resend
+  (`pg_net`), uma vez; o detalhe do pedido permite reenviar. O remetente precisa ser de um domínio
+  verificado no Resend.
+- Avisos recebidos ficam em `pagamentos_eventos` (90 dias). Estorno e chargeback não voltam o
+  pedido sozinhos: cancele em Pedidos.
+
 ## Estrutura da solução
 
 ```
@@ -151,12 +173,14 @@ supabase/migrations/20261021120000_landing_pages.sql    landing pages, segredos 
 supabase/migrations/20261022120000_revisao_seguranca.sql link secreto, limites, cadastro fechado, download liberado
 supabase/migrations/20261023120000_remover_busca_selfie.sql tira a busca por selfie e apaga os rostos
 supabase/migrations/20261024120000_landing_formulario_logo.sql formulário da landing e logo para fundo escuro
+supabase/migrations/20261025120000_pagamento_online.sql   Asaas, Mercado Pago, webhook e e-mail das fotos
+src/routes/api.pagamentos.$gateway.ts                    webhook dos gateways
 ```
 
 ## Próximos passos
 
-- Pagamento automático (Mercado Pago ou Asaas com webhook), no lugar da confirmação manual do Pix.
-- E-mail para o cliente quando o pedido é criado e quando é pago.
+- E-mail para o cliente quando o pedido é criado (o de pedido pago já existe).
+- Estorno e chargeback do gateway cancelando o pedido sozinhos.
 - Favoritos e seleção para álbum (o cliente marca e envia, sem pagar).
 - Busca por número de camisa/peito nos eventos (marcação ou OCR no navegador).
 - Domínio próprio e página de portfólio do fotógrafo.

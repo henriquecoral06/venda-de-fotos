@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizarTelefone } from "@/lib/format";
@@ -59,6 +59,17 @@ const galeriaPublica = z.object({
 
 const statusPedido = z.enum(["aguardando_pagamento", "pago", "cancelado"]);
 
+const cobranca = z.object({
+  metodo: z.enum(["pix", "cartao"]),
+  pix_qrcode: z.string(),
+  pix_copia_cola: z.string(),
+  link: z.string(),
+  expira_em: z.string(),
+});
+
+export type Cobranca = z.infer<typeof cobranca>;
+export type MetodoPagamento = Cobranca["metodo"];
+
 const pedidoPublico = z.object({
   codigo: z.string(),
   status: statusPedido,
@@ -68,10 +79,18 @@ const pedidoPublico = z.object({
   valor_total: z.number(),
   created_at: z.string(),
   pago_em: z.string().nullable(),
+  // Opcionais: banco sem a migration `pagamento_online` devolve sem eles.
+  email_enviado: z.boolean().optional(),
   galeria: z.object({ titulo: z.string(), slug: z.string() }),
   fotografo: z.string(),
   marca,
-  pagamento: z.object({ chave_pix: z.string(), instrucoes: z.string(), whatsapp: z.string() }),
+  pagamento: z.object({
+    chave_pix: z.string(),
+    instrucoes: z.string(),
+    whatsapp: z.string(),
+    gateway: z.enum(["manual", "asaas", "mercadopago"]).optional(),
+    cobranca: cobranca.nullable().optional(),
+  }),
   itens: z.array(
     z.object({
       foto_id: z.string(),
@@ -198,7 +217,11 @@ export function useCriarPedido() {
   });
 }
 
-/** Enquanto aguarda pagamento, confere de novo a cada 15 s (o fotógrafo confirma à mão). */
+/**
+ * Enquanto aguarda pagamento, confere de novo a cada 15 s (o fotógrafo
+ * confirma à mão) ou a cada 5 s com cobrança online em aberto (o aviso do
+ * gateway marca o pedido como pago).
+ */
 export function usePedidoPublico(codigo: string) {
   return useQuery({
     queryKey: [...CHAVE_VITRINE, "pedido", codigo],
@@ -207,9 +230,45 @@ export function usePedidoPublico(codigo: string) {
       if (error) throw new Error(error.message);
       return ler(pedidoPublico, data);
     },
-    refetchInterval: (q) => (q.state.data?.status === "aguardando_pagamento" ? 15_000 : false),
+    refetchInterval: (q) => {
+      const p = q.state.data;
+      if (p?.status !== "aguardando_pagamento") return false;
+      return p.pagamento.cobranca ? 5_000 : 15_000;
+    },
     refetchOnWindowFocus: true,
   });
+}
+
+/** Gera a cobrança no gateway (ou devolve a que ainda vale). */
+export function useGerarCobranca(codigo: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ metodo, cpf }: { metodo: MetodoPagamento; cpf: string }) => {
+      const { data, error } = await supabase.rpc("gerar_cobranca", {
+        _codigo: codigo,
+        _metodo: metodo,
+        _cpf: cpf,
+      });
+      if (error) throw new Error(error.message);
+      const r = z
+        .object({ cobranca: cobranca.optional(), erro: z.string().optional() })
+        .safeParse(data);
+      if (!r.success || (!r.data.cobranca && !r.data.erro)) {
+        throw new Error("Resposta inesperada do servidor. Tente de novo.");
+      }
+      if (r.data.erro || !r.data.cobranca) throw new Error(r.data.erro);
+      return r.data.cobranca;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...CHAVE_VITRINE, "pedido", codigo] }),
+  });
+}
+
+/**
+ * Pede ao banco para consultar o gateway agora (volta da página de cartão,
+ * botão "Já paguei"). O banco limita quantas vezes por pedido.
+ */
+export async function conferirPagamento(codigo: string): Promise<void> {
+  await supabase.rpc("conferir_pagamento", { _codigo: codigo });
 }
 
 /** Link assinado de 1 hora que já baixa com o nome original do arquivo. */

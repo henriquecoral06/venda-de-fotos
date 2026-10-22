@@ -26,6 +26,7 @@ import { Route as LSlugRouteImport } from './routes/l.$slug'
 import { Route as PedidoCodigoRouteImport } from './routes/pedido.$codigo'
 import { Route as AuthenticatedGaleriasIdRouteImport } from './routes/_authenticated/galerias_.$id'
 import { Route as AuthenticatedLandingPagesIdRouteImport } from './routes/_authenticated/landing-pages_.$id'
+import { Route as ApiPagamentosGatewayRouteImport } from './routes/api.pagamentos.$gateway'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -113,6 +114,11 @@ const AuthenticatedLandingPagesIdRoute =
     path: '/landing-pages/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const ApiPagamentosGatewayRoute = ApiPagamentosGatewayRouteImport.update({
+  id: '/api/pagamentos/$gateway',
+  path: '/api/pagamentos/$gateway',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -131,6 +137,7 @@ export interface FileRoutesByFullPath {
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/galerias/$id': typeof AuthenticatedGaleriasIdRoute
   '/landing-pages/$id': typeof AuthenticatedLandingPagesIdRoute
+  '/api/pagamentos/$gateway': typeof ApiPagamentosGatewayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/galerias/$id': typeof AuthenticatedGaleriasIdRoute
   '/landing-pages/$id': typeof AuthenticatedLandingPagesIdRoute
+  '/api/pagamentos/$gateway': typeof ApiPagamentosGatewayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -169,6 +177,7 @@ export interface FileRoutesById {
   '/pedido/$codigo': typeof PedidoCodigoRoute
   '/_authenticated/galerias_/$id': typeof AuthenticatedGaleriasIdRoute
   '/_authenticated/landing-pages_/$id': typeof AuthenticatedLandingPagesIdRoute
+  '/api/pagamentos/$gateway': typeof ApiPagamentosGatewayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -189,6 +198,7 @@ export interface FileRouteTypes {
     | '/pedido/$codigo'
     | '/galerias/$id'
     | '/landing-pages/$id'
+    | '/api/pagamentos/$gateway'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/pedido/$codigo'
     | '/galerias/$id'
     | '/landing-pages/$id'
+    | '/api/pagamentos/$gateway'
   id:
     | '__root__'
     | '/'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/pedido/$codigo'
     | '/_authenticated/galerias_/$id'
     | '/_authenticated/landing-pages_/$id'
+    | '/api/pagamentos/$gateway'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -237,6 +249,7 @@ export interface RootRouteChildren {
   GSlugRoute: typeof GSlugRoute
   LSlugRoute: typeof LSlugRoute
   PedidoCodigoRoute: typeof PedidoCodigoRoute
+  ApiPagamentosGatewayRoute: typeof ApiPagamentosGatewayRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -360,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedLandingPagesIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/pagamentos/$gateway': {
+      id: '/api/pagamentos/$gateway'
+      path: '/api/pagamentos/$gateway'
+      fullPath: '/api/pagamentos/$gateway'
+      preLoaderRoute: typeof ApiPagamentosGatewayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -399,6 +419,7 @@ const rootRouteChildren: RootRouteChildren = {
   GSlugRoute: GSlugRoute,
   LSlugRoute: LSlugRoute,
   PedidoCodigoRoute: PedidoCodigoRoute,
+  ApiPagamentosGatewayRoute: ApiPagamentosGatewayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

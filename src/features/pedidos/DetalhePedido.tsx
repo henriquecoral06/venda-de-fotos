@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, Loader2, X } from "lucide-react";
+import { Check, Copy, Loader2, Mail, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,12 @@ import { ConfirmarAcao } from "@/components/ConfirmarAcao";
 import { brl, dataHoraBR } from "@/lib/format";
 import { linkPedido, rotuloFotos, urlPrevia } from "@/lib/fotos";
 import {
+  ROTULO_PAGO_VIA,
   ROTULO_STATUS_PEDIDO,
   VARIANTE_STATUS_PEDIDO,
   useItensPedido,
   useMudarStatusPedido,
+  useReenviarEmailPedido,
   type PedidoComGaleria,
   type StatusPedido,
 } from "./api";
@@ -43,6 +45,7 @@ export function DetalhePedido({
 }) {
   const itens = useItensPedido(pedido?.id ?? null);
   const mudar = useMudarStatusPedido();
+  const reenviar = useReenviarEmailPedido();
   const [confirmandoCancelar, setConfirmandoCancelar] = useState(false);
 
   function alterar(status: StatusPedido, mensagem: string) {
@@ -106,7 +109,39 @@ export function DetalhePedido({
               <Linha rotulo="Total">
                 <span className="font-semibold tabular-nums">{brl(pedido.valor_total)}</span>
               </Linha>
-              {pedido.pago_em && <Linha rotulo="Pago em">{dataHoraBR(pedido.pago_em)}</Linha>}
+              {pedido.pago_em && (
+                <Linha rotulo="Pago em">
+                  {dataHoraBR(pedido.pago_em)}
+                  {ROTULO_PAGO_VIA[pedido.pago_via] ? ` · ${ROTULO_PAGO_VIA[pedido.pago_via]}` : ""}
+                </Linha>
+              )}
+              {pedido.status === "pago" && (
+                <Linha rotulo="E-mail das fotos">
+                  <span className="inline-flex items-center gap-2">
+                    {pedido.email_enviado_em
+                      ? `Enviado em ${dataHoraBR(pedido.email_enviado_em)}`
+                      : "Não enviado"}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={reenviar.isPending}
+                      onClick={() =>
+                        reenviar.mutate(pedido.id, {
+                          onSuccess: () => toast.success("E-mail enviado ao comprador."),
+                          onError: (e: Error) => toast.error(e.message),
+                        })
+                      }
+                    >
+                      {reenviar.isPending ? (
+                        <Loader2 className="size-4 animate-spin" />
+                      ) : (
+                        <Mail className="size-4" />
+                      )}
+                      {pedido.email_enviado_em ? "Reenviar" : "Enviar"}
+                    </Button>
+                  </span>
+                </Linha>
+              )}
             </div>
 
             {itens.isPending ? (

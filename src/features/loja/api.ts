@@ -114,3 +114,103 @@ export function useSalvarLoja() {
     onSuccess: () => qc.invalidateQueries({ queryKey: CHAVE_LOJA }),
   });
 }
+
+export const GATEWAYS = ["manual", "asaas", "mercadopago"] as const;
+export type Gateway = (typeof GATEWAYS)[number];
+
+const diagnosticoPagamento = z.object({
+  gateway: z.enum(GATEWAYS),
+  url_publica: z.string(),
+  asaas_configurado: z.boolean(),
+  asaas_sandbox: z.boolean(),
+  mercadopago_configurado: z.boolean(),
+  mercadopago_teste: z.boolean(),
+  conta: z.string().nullable(),
+  erro: z.string().nullable(),
+  webhook: z
+    .object({ url: z.string(), existe: z.boolean(), ativo: z.boolean(), eventos_ok: z.boolean() })
+    .nullable(),
+  email_configurado: z.boolean(),
+  email_remetente: z.string(),
+});
+
+export type DiagnosticoPagamento = z.infer<typeof diagnosticoPagamento>;
+
+const CHAVE_PAGAMENTO = [...CHAVE_LOJA, "pagamento"] as const;
+
+function lerDiagnostico(dado: unknown): DiagnosticoPagamento {
+  const r = diagnosticoPagamento.safeParse(dado);
+  if (!r.success) throw new Error("Resposta inesperada do servidor. Recarregue a página.");
+  return r.data;
+}
+
+/**
+ * Estado real do pagamento online: o banco consulta o gateway ativo (conta,
+ * webhook) em vez de confiar no que está gravado. Só o dono chama.
+ */
+export function useDiagnosticoPagamento(habilitado: boolean) {
+  return useQuery({
+    queryKey: CHAVE_PAGAMENTO,
+    enabled: habilitado,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("diagnostico_pagamento");
+      if (error) throw new Error(error.message);
+      return lerDiagnostico(data);
+    },
+  });
+}
+
+/** `chave` nula mantém a gravada; vazia apaga a do gateway escolhido. */
+export function useConfigurarPagamento() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { gateway: Gateway; chave: string | null; urlPublica: string }) => {
+      const { data, error } = await supabase.rpc("configurar_pagamento", {
+        _gateway: v.gateway,
+        _chave: v.chave,
+        _url_publica: v.urlPublica,
+      });
+      if (error) throw new Error(error.message);
+      return lerDiagnostico(data);
+    },
+    onSuccess: (d) => {
+      qc.setQueryData(CHAVE_PAGAMENTO, d);
+      void qc.invalidateQueries({ queryKey: CHAVE_LOJA });
+    },
+  });
+}
+
+export function useConfigurarEmail() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: {
+      chave: string | null;
+      remetente: string;
+      urlPublica: string | null;
+    }) => {
+      const { data, error } = await supabase.rpc("configurar_email", {
+        _chave: v.chave,
+        _remetente: v.remetente,
+        _url_publica: v.urlPublica,
+      });
+      if (error) throw new Error(error.message);
+      return lerDiagnostico(data);
+    },
+    onSuccess: (d) => {
+      qc.setQueryData(CHAVE_PAGAMENTO, d);
+      void qc.invalidateQueries({ queryKey: CHAVE_LOJA });
+    },
+  });
+}
+
+/** Envia um e-mail de teste para o dono; devolve o endereço que recebeu. */
+export function useEmailTeste() {
+  return useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("enviar_email_teste");
+      if (error) throw new Error(error.message);
+      return data;
+    },
+  });
+}
